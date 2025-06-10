@@ -1,0 +1,891 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "email": "admin@med.com",
+      "password": "admin123",
+      "role": "admin",
+      "lastLogin": "Sat, May 31, 01:54 AM",
+      "position": "System Administrator",
+      "department": "IT",
+      "employeeId": "EMP-ADM-042",
+      "joinDate": "10/02/2018",
+      "responsibilities": "Manage hospital systems, user accounts, and security policies",
+      "education": [
+        {
+          "institution": "Cairo University",
+          "degree": "Bachelor of Computer Science",
+          "period": "2003 - 2007",
+          "description": "Specialized in Information Systems and Network Security"
+        },
+        {
+          "institution": "Certified Information Systems Security Professional (CISSP)",
+          "degree": "ISC2",
+          "period": "2010"
+        }
+      ],
+      "phone": "5555"
+    },
+    {
+      "id": "2",
+      "username": "dr.john",
+      "email": "john@med.com",
+      "role": "doctor"
+    },
+    {
+      "id": "3",
+      "username": "sara",
+      "email": "sara@med.com",
+      "role": "patient"
+    },
+    {
+      "id": "4",
+      "username": "dr.amal",
+      "email": "amal@med.com",
+      "role": "doctor"
+    },
+    {
+      "id": "5",
+      "username": "ahmed",
+      "email": "ahmed@med.com",
+      "role": "patient"
+    },
+    {
+      "id": "6",
+      "username": "layla",
+      "email": "layla@med.com",
+      "role": "patient"
+    },
+    {
+      "id": "561e",
+      "name": "harbi",
+      "username": "Harbi_Abdellah",
+      "email": "harbia305@gmail.com",
+      "password": "123456789",
+      "role": "patient"
+    },
+    {
+      "id": "d64a",
+      "name": "Ahmed",
+      "username": "Ahmed",
+      "email": "ali@example.com",
+      "password": "123456789",
+      "role": "patient"
+    },
+    {
+      "id": "0ec7",
+      "name": "adam",
+      "username": "Harbi_Abdellah",
+      "email": "adam@gmail.com",
+      "password": "123456789",
+      "role": "patient"
+    },
+    {
+      "id": "d41b",
+      "name": "rehab",
+      "username": "Rehabkamal",
+      "email": "rehab@gmail.com",
+      "password": "rehab@gmail.com",
+      "role": "patient"
+    }
+  ],
+  "specialties": [
+    {
+      "id": "1",
+      "name": "Cardiology"
+    },
+    {
+      "id": "2",
+      "name": "Neurology"
+    },
+    {
+      "name": "Dermatology",
+      "id": "3"
+    }
+  ],
+  "doctors": [
+    {
+      "id": "1",
+      "fullName": "Dr. Marcus Horizon",
+      "specialty": "Cardiology",
+      "rating": 4.7,
+      "distance": "800m away",
+      "image": "https://randomuser.me/api/portraits/men/75.jpg",
+      "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      "availableDates": [
+        {
+          "day": "Mon",
+          "date": "21"
+        },
+        {
+          "day": "Tue",
+          "date": "22"
+        },
+        {
+          "day": "Wed",
+          "date": "23"
+        }
+      ],
+      "name": "rehab",
+      "email": "rehab@gmail.com",
+      "phone": "01013102431"
+    },
+    {
+      "id": "2",
+      "fullName": "Dr. Maria Carter",
+      "specialty": "Dentist",
+      "rating": 4.5,
+      "distance": "1.2km away",
+      "image": "https://randomuser.me/api/portraits/women/65.jpg",
+      "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      "availableDates": [
+        {
+          "day": "Mon",
+          "date": "21"
+        },
+        {
+          "day": "Tue",
+          "date": "22"
+        },
+        {
+          "day": "Wed",
+          "date": "23"
+        },
+        {
+          "day": "Thu",
+          "date": "24"
+        },
+        {
+          "day": "Fri",
+          "date": "25"
+        },
+        {
+          "day": "Sat",
+          "date": "26"
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "fullName": "Dr. Stevi Moore",
+      "specialty": "Surgeon",
+      "rating": 4.8,
+      "distance": "500m away",
+      "image": "https://randomuser.me/api/portraits/women/66.jpg",
+      "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      "availableDates": [
+        {
+          "day": "Mon",
+          "date": "21"
+        },
+        {
+          "day": "Tue",
+          "date": "22"
+        },
+        {
+          "day": "Wed",
+          "date": "23"
+        },
+        {
+          "day": "Thu",
+          "date": "24"
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "fullName": "Dr. Luke Daniels",
+      "specialty": "Lungs Specialist",
+      "rating": 4.6,
+      "distance": "2km away",
+      "image": "https://randomuser.me/api/portraits/men/65.jpg",
+      "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      "availableDates": [
+        {
+          "day": "Thu",
+          "date": "24"
+        },
+        {
+          "day": "Fri",
+          "date": "25"
+        },
+        {
+          "day": "Sat",
+          "date": "26"
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "fullName": "Dr. Abdelhameed Mohamed",
+      "specialty": "Cardiology",
+      "rating": 4.7,
+      "distance": "800m away",
+      "image": "https://randomuser.me/api/portraits/men/75.jpg",
+      "bio": "Lorem ipsum dolor sit amet, consectetur adipiscing elit...",
+      "availableDates": [
+        {
+          "day": "Mon",
+          "date": "21"
+        },
+        {
+          "day": "Tue",
+          "date": "22"
+        },
+        {
+          "day": "Wed",
+          "date": "23"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "1",
+      "name": "General"
+    },
+    {
+      "id": "2",
+      "name": "Lungs Specialist"
+    },
+    {
+      "id": "3",
+      "name": "Dentist"
+    },
+    {
+      "id": "4",
+      "name": "Psychiatrist"
+    },
+    {
+      "id": "5",
+      "name": "Covid-19"
+    },
+    {
+      "id": "6",
+      "name": "Orthopedics"
+    },
+    {
+      "id": "7",
+      "name": "Surgeon"
+    },
+    {
+      "id": "8",
+      "name": "Cardiologist"
+    }
+  ],
+  "recommendedDoctor": {
+    "id": 1,
+    "fullName": "Dr. Marcus Horizon",
+    "specialty": "Cardiology",
+    "rating": 4.7,
+    "distance": "800m away",
+    "image": "https://randomuser.me/api/portraits/men/75.jpg"
+  },
+  "recommendedDoctors": [
+    {
+      "id": "1",
+      "fullName": "Dr. Marcus Horizon",
+      "specialty": "Cardiology",
+      "rating": 4.7,
+      "distance": "800m away",
+      "image": "https://randomuser.me/api/portraits/men/75.jpg"
+    },
+    {
+      "id": "2",
+      "fullName": "Dr. Maria Carter",
+      "specialty": "Dentist",
+      "rating": 4.5,
+      "distance": "1.2km away",
+      "image": "https://randomuser.me/api/portraits/women/65.jpg"
+    },
+    {
+      "id": "3",
+      "fullName": "Dr. Stevi Moore",
+      "specialty": "Surgeon",
+      "rating": 4.8,
+      "distance": "500m away",
+      "image": "https://randomuser.me/api/portraits/women/66.jpg"
+    },
+    {
+      "id": "4",
+      "fullName": "Dr. Luke Daniels",
+      "specialty": "Lungs Specialist",
+      "rating": 4.6,
+      "distance": "2km away",
+      "image": "https://randomuser.me/api/portraits/men/65.jpg"
+    }
+  ],
+  "recentDoctors": [
+    {
+      "id": "1",
+      "fullName": "Dr. Marcus Horizon",
+      "specialty": "Cardiology",
+      "rating": 4.7,
+      "distance": "800m away",
+      "image": "https://randomuser.me/api/portraits/men/75.jpg"
+    },
+    {
+      "id": "2",
+      "fullName": "Dr. Maria Carter",
+      "specialty": "Dentist",
+      "rating": 4.5,
+      "distance": "1.2km away",
+      "image": "https://randomuser.me/api/portraits/women/65.jpg"
+    },
+    {
+      "id": "3",
+      "fullName": "Dr. Stevi Moore",
+      "specialty": "Surgeon",
+      "rating": 4.8,
+      "distance": "500m away",
+      "image": "https://randomuser.me/api/portraits/women/66.jpg"
+    },
+    {
+      "id": "4",
+      "fullName": "Dr. Luke Daniels",
+      "specialty": "Lungs Specialist",
+      "rating": 4.6,
+      "distance": "2km away",
+      "image": "https://randomuser.me/api/portraits/men/65.jpg"
+    }
+  ],
+  "patients": [
+    {
+      "id": "1",
+      "userId": 3,
+      "fullName": "Sara Ali",
+      "age": 27,
+      "gender": "female",
+      "contact": "0100000001",
+      "approved": false,
+      "image": "https://randomuser.me/api/portraits/women/12.jpg"
+    },
+    {
+      "id": "2",
+      "userId": 5,
+      "fullName": "Ahmed Tarek",
+      "age": 35,
+      "gender": "male",
+      "contact": "0100000002",
+      "approved": false
+    },
+    {
+      "id": "3",
+      "userId": 5,
+      "fullName": "Ahmed Tarek Jr",
+      "age": 10,
+      "gender": "male",
+      "contact": "0100000003",
+      "approved": false,
+      "image": "https://randomuser.me/api/portraits/men/13.jpg"
+    },
+    {
+      "id": "4",
+      "userId": 6,
+      "fullName": "Layla Mohamed",
+      "email": "",
+      "phone": "",
+      "address": "",
+      "age": 19,
+      "gender": "female",
+      "contact": "0100000004",
+      "image": "https://randomuser.me/api/portraits/women/14.jpg",
+      "approved": false,
+      "notes": "Alooooooo"
+    }
+  ],
+  "availability": [
+    {
+      "id": "f422",
+      "doctorId": 2,
+      "day": "Thursday",
+      "startTime": "12:00",
+      "endTime": "20:00"
+    },
+    {
+      "id": "fe56",
+      "doctorId": 3,
+      "day": "Saturday",
+      "startTime": "09:00",
+      "endTime": "17:00"
+    },
+    {
+      "id": "6481",
+      "doctorId": 1,
+      "day": "Wednesday",
+      "startTime": "09:00",
+      "endTime": "21:00"
+    },
+    {
+      "id": "3e8b",
+      "doctorId": 1,
+      "day": "Sunday",
+      "startTime": "09:00",
+      "endTime": "20:00"
+    },
+    {
+      "id": "3893",
+      "doctorId": 1,
+      "day": "Monday",
+      "startTime": "09:00",
+      "endTime": "17:00"
+    }
+  ],
+  "appointments": [
+    {
+      "id": "1",
+      "doctorId": 1,
+      "date": "2025-05-30",
+      "time": "13:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 1"
+    },
+    {
+      "id": "2",
+      "doctorId": 3,
+      "patientId": 4,
+      "date": "2025-06-05T09:00:00",
+      "reason": "Consultation for allergies",
+      "status": "Scheduled",
+      "time": "06:51",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "3",
+      "doctorId": 4,
+      "patientId": 3,
+      "date": "2025-06-07T11:15:00",
+      "reason": "Blood pressure check",
+      "status": "Cancelled",
+      "time": "06:51",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "4",
+      "doctorId": 5,
+      "patientId": 5,
+      "date": "2025-06-08T16:00:00",
+      "reason": "Skin rash evaluation",
+      "status": "Scheduled",
+      "paymentMethod": "Mastercard",
+      "time": "06:51"
+    },
+    {
+      "id": "5",
+      "doctorId": 5,
+      "patientId": 5,
+      "date": "2025-06-08T16:00:00",
+      "reason": "covid-19",
+      "status": "Scheduled",
+      "time": "06:51",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "6",
+      "doctorId": 4,
+      "patientId": 1,
+      "date": "2025-06-08T16:00:00",
+      "reason": "Skin rash evaluation",
+      "status": "Scheduled",
+      "time": "06:51",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "7",
+      "doctorId": 3,
+      "patientId": 1,
+      "date": "2025-06-08T16:00:00",
+      "reason": "Skin rash evaluation",
+      "status": "Scheduled",
+      "time": "06:51",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "8",
+      "doctorId": 1,
+      "patientId": 1,
+      "dateTime": "2025-05-30T00:45:25.643Z",
+      "reason": "General Checkup",
+      "status": "Pending",
+      "date": "2025-05-01",
+      "time": "17:22"
+    },
+    {
+      "id": "9",
+      "doctorId": "1",
+      "patientId": 1,
+      "date": "2025-05-26",
+      "reason": "Back pain",
+      "status": "Pending",
+      "paymentMethod": "Mastercard",
+      "time": "20:22"
+    },
+    {
+      "id": "12",
+      "patientId": 1,
+      "doctorName": "Dr. Marcus Horizon",
+      "specialty": "Cardiologist",
+      "date": "2025-06-05",
+      "time": "10:00",
+      "reason": "Chest pain",
+      "status": "Confirmed",
+      "paymentMethod": "Mastercard"
+    },
+    {
+      "id": "db16",
+      "patientId": 1,
+      "pecialty": "Dentist",
+      "date": "Wednesday, Jun 23, 2021",
+      "time": "10:00 AM",
+      "reason": "Chest pain",
+      "status": "rejected",
+      "paymentMethod": "VISA"
+    },
+    {
+      "id": "22a8",
+      "patientId": 1,
+      "specialty": "Lungs Specialist",
+      "date": "Wednesday, Jun 23, 2021",
+      "time": "10:00 AM",
+      "reason": "Chest pain",
+      "status": "approved",
+      "paymentMethod": "VISA"
+    },
+    {
+      "id": "4422",
+      "patientId": 1,
+      "doctorName": "Dr. Marcus Horizon",
+      "specialty": "Cardiology",
+      "date": "Wednesday, Jun 23, 2021",
+      "time": "10:00 AM",
+      "reason": "Chest pain",
+      "status": "approved",
+      "paymentMethod": "VISA"
+    },
+    {
+      "id": "c6e0",
+      "doctorName": "Marwa",
+      "patientName": "Mayar",
+      "date": "2025-05-30",
+      "time": "18:43",
+      "notes": "aloooooo",
+      "status": "rejected"
+    },
+    {
+      "id": "ffb7",
+      "patientId": 1,
+      "doctorName": "Dr. Marcus Horizon",
+      "specialty": "Cardiology",
+      "date": "Wednesday, Jun 23, 2021",
+      "time": "10:00 AM",
+      "reason": "Chest pain",
+      "status": "approved",
+      "paymentMethod": "VISA"
+    },
+    {
+      "id": "393a6a15-5912-4cac-8c58-23995383be0e",
+      "doctorName": "Dina",
+      "patientName": "Dina",
+      "date": "2025-05-30",
+      "time": "23:16",
+      "notes": "Allllo",
+      "status": "approved"
+    },
+    {
+      "id": "b59d5311-f9b2-46e4-9179-dd5e8d445e31",
+      "doctorName": "Dina",
+      "patientName": "Mayar",
+      "date": "2025-05-30",
+      "time": "23:21",
+      "notes": "ءسؤث",
+      "status": "approved"
+    },
+    {
+      "id": "c6e0",
+      "doctorName": "Marwa",
+      "patientName": "Mayar",
+      "date": "2025-05-30",
+      "time": "18:43",
+      "notes": "aloooooo",
+      "status": "approved"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "1",
+      "message": "Booking confirmed for Dr. Omar at 2025-06-01 10:00 AM.",
+      "email": "patient1@example.com",
+      "status": "confirmed"
+    },
+    {
+      "id": "2",
+      "message": "Booking confirmation email sent to sara@med.com.",
+      "email": "sara@med.com",
+      "status": "sent"
+    },
+    {
+      "id": "3",
+      "message": "Booking confirmed for Dr. Amal at 2025-06-05 09:00 AM.",
+      "email": "patient2@example.com",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-03",
+      "time": "13:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 2"
+    },
+    {
+      "id": "3",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-30",
+      "time": "9:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 3"
+    },
+    {
+      "id": "4",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-05-30",
+      "time": "15:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 4"
+    },
+    {
+      "id": "5",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-06",
+      "time": "9:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 5"
+    },
+    {
+      "id": "6",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-07",
+      "time": "11:00",
+      "status": "pending",
+      "notes": "ملاحظة رقم 6"
+    },
+    {
+      "id": "7",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-08",
+      "time": "13:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 7"
+    },
+    {
+      "id": "8",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-09",
+      "time": "16:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 8"
+    },
+    {
+      "id": "9",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-10",
+      "time": "10:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 9"
+    },
+    {
+      "id": "10",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-06-11",
+      "time": "15:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 10"
+    },
+    {
+      "id": "11",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-12",
+      "time": "9:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 11باتلناتمنتال"
+    },
+    {
+      "id": "12",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-13",
+      "time": "10:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 12"
+    },
+    {
+      "id": "13",
+      "patientId": 2,
+      "doctorId": 1,
+      "date": "2025-06-14",
+      "time": "14:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 13"
+    },
+    {
+      "id": "14",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-15",
+      "time": "11:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 14"
+    },
+    {
+      "id": "15",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-16",
+      "time": "11:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 15"
+    },
+    {
+      "id": "16",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-17",
+      "time": "14:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 16"
+    },
+    {
+      "id": "17",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "10:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 17"
+    },
+    {
+      "id": "18",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "12:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 18"
+    },
+    {
+      "id": "19",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "9:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 19"
+    },
+    {
+      "id": "20",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "16:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 20"
+    },
+    {
+      "id": "21",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "15:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 21"
+    },
+    {
+      "id": "22",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "13:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 22"
+    },
+    {
+      "id": "23",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "10:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 23"
+    },
+    {
+      "id": "24",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "11:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 24"
+    },
+    {
+      "id": "25",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-26",
+      "time": "15:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 25"
+    },
+    {
+      "id": "26",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "12:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 26"
+    },
+    {
+      "id": "27",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-05-26",
+      "time": "11:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 27"
+    },
+    {
+      "id": "28",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-06-29",
+      "time": "9:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 28"
+    },
+    {
+      "id": "29",
+      "patientId": 1,
+      "doctorId": 1,
+      "date": "2025-06-30",
+      "time": "16:00",
+      "status": "approved",
+      "notes": "ملاحظة رقم 29"
+    },
+    {
+      "id": "30",
+      "patientId": 3,
+      "doctorId": 1,
+      "date": "2025-07-01",
+      "time": "15:00",
+      "status": "rejected",
+      "notes": "ملاحظة رقم 30"
+    }
+  ]
+}
