@@ -12,6 +12,8 @@ import {
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { styles } from "../doctorStyle/DoctorAppointments.styles";
+// import Grid from '@mui/material/Unstable_Grid2';
+
 
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -29,14 +31,26 @@ const DoctorAppointments = () => {
     "Thursday", "Friday", "Saturday"
   ];
 
+  // useEffect(() => {
+  //   axios.get("http://localhost:8000/appointments/").then(res => {
+  //     setAppointments(res.data);
+  //   });
+  // }, []);
   useEffect(() => {
-    axios.get("http://localhost:5000/appointments").then(res => {
-      setAppointments(res.data);
-    });
-  }, []);
+  const fetchAppointments = async () => {
+    try {
+      const response = await axios.get("http://localhost:8000/appointments/");
+      setAppointments(response.data);
+    } catch (error) {
+      console.error("Axios Error:", error);
+    }
+  };
+  fetchAppointments();
+}, []);
+
 
   const handleStatusChange = (id, status) => {
-    axios.patch(`http://localhost:5000/appointments/${id}`, { status })
+    axios.patch(`http://localhost:8000/appointments/${id}`, { status })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>
@@ -47,7 +61,7 @@ const DoctorAppointments = () => {
   };
 
   const handleNoteChange = (id, note) => {
-    axios.patch(`http://localhost:5000/appointments/${id}`, { notes: note })
+    axios.patch(`http://localhost:8000/appointments/${id}/`, { notes: note })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>
