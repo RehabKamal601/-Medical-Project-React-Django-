@@ -4,7 +4,7 @@ from .views import DoctorViewSet
 from .views import (
     DoctorRegisterView, DoctorAvailabilityCreateView,
  AppointmentListView, AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView,
- DoctorListView, DoctorDetailView, DoctorAppointmentsView, PatientAppointmentsView, AppointmentCancelView, AppointmentRescheduleView
+ DoctorDashboardStats
 )
 
 router = DefaultRouter()
@@ -19,16 +19,10 @@ urlpatterns = [
 
     path('appointments/<int:pk>/update/', AppointmentUpdateView.as_view(), name='appointment-update'),
     path('profile/update/', DoctorProfileUpdateView.as_view(), name='doctor-profile-update'),
+    path('dashboard/stats/', DoctorDashboardStats.as_view(), name='doctor-dashboard-stats'),
 
 
 
 ]
 
-urlpatterns += [
-    path('list/', DoctorListView.as_view(), name='doctor-list'),
-    path('detail/<int:pk>/', DoctorDetailView.as_view(), name='doctor-detail'),
-    path('doctor/<int:doctor_id>/appointments/', DoctorAppointmentsView.as_view(), name='doctor-appointments'),
-    path('patient/appointments/', PatientAppointmentsView.as_view(), name='patient-appointments'),
-    path('appointments/<int:pk>/cancel/', AppointmentCancelView.as_view(), name='appointment-cancel'),
-    path('appointments/<int:pk>/reschedule/', AppointmentRescheduleView.as_view(), name='appointment-reschedule'),
-]
+

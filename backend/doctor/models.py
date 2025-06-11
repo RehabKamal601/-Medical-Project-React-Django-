@@ -16,6 +16,17 @@ class Doctor(models.Model):
         return f"Dr. {self.user.first_name} {self.user.last_name}"
 
 
+class Patient(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    date_of_birth = models.DateField(null=True, blank=True)
+    phone = models.CharField(max_length=20, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+    medical_history = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.user.first_name} {self.user.last_name}"
+
+
 class DoctorAvailability(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
     day = models.CharField(max_length=10)  # e.g., Monday, Tuesday
@@ -28,7 +39,7 @@ class DoctorAvailability(models.Model):
 
 class Appointment(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
-    patient_name = models.CharField(max_length=100)
+    patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
     date = models.DateTimeField()
     status = models.CharField(max_length=10, choices=[
         ('pending', 'Pending'),
@@ -38,4 +49,4 @@ class Appointment(models.Model):
     notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.patient_name} - {self.date} - {self.status}"
+        return f"{self.patient} - {self.date} - {self.status}"

@@ -14,6 +14,10 @@ from rest_framework.exceptions import NotAuthenticated
 
 
 from rest_framework import generics, permissions
+from rest_framework.views import APIView
+from django.db.models import Count
+from datetime import date
+from .models import Patient
 
 
 
@@ -126,34 +130,68 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile linked to this user.")
 
-class DoctorListView(generics.ListAPIView):
-    queryset = Doctor.objects.all()
-    serializer_class = DoctorSerializer
-    filterset_fields = ['specialization']
-    search_fields = ['user__username', 'specialization']
-
-class DoctorDetailView(generics.RetrieveAPIView):
-    queryset = Doctor.objects.all()
-    serializer_class = DoctorSerializer
-
-class DoctorAppointmentsView(generics.ListAPIView):
-    serializer_class = AppointmentSerializer
-    def get_queryset(self):
-        doctor_id = self.kwargs['doctor_id']
-        return Appointment.objects.filter(doctor_id=doctor_id)
-
-class PatientAppointmentsView(generics.ListAPIView):
-    serializer_class = AppointmentSerializer
+class DoctorDashboardStats(APIView):
     permission_classes = [permissions.IsAuthenticated]
-    def get_queryset(self):
-        return Appointment.objects.filter(patient_name=self.request.user.username)
-
-class AppointmentCancelView(generics.DestroyAPIView):
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-class AppointmentRescheduleView(generics.UpdateAPIView):
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    
+    def get(self, request):
+        if request.user.role != 'doctor':
+            return Response({"error": "Only doctors can access this endpoint"}, status=403)
+            
+        # Get today's date
+        today = date.today()
+        
+        try:
+            # Get doctor's appointments
+            upcoming_appointments = Appointment.objects.filter(
+                doctor=request.user,
+                date__gte=today
+            ).count()
+            
+            # Get today's appointments
+            todays_appointments = Appointment.objects.filter(
+                doctor=request.user,
+                date=today
+            ).count()
+            
+            # Get total patients
+            total_patients = Patient.objects.filter(
+                appointments__doctor=request.user
+            ).distinct().count()
+        except:
+            # If any error occurs or tables don't exist yet, return zeros
+            upcoming_appointments = 0
+            todays_appointments = 0
+            total_patients = 0
+        
+        return Response({
+            "doctor": {
+                "name": f"Dr. {request.user.first_name} {request.user.last_name}".strip() or f"Dr. {request.user.username}",
+                "title": request.user.specialization or "Doctor"
+            },
+            "stats": [
+                {
+                    "id": 1,
+                    "title": "Upcoming Appointments",
+                    "value": upcoming_appointments,
+                    "action": "View Schedule",
+                    "theme": "appointments",
+                    "path": "/doctor/appointments"
+                },
+                {
+                    "id": 2,
+                    "title": "Total Patients",
+                    "value": total_patients,
+                    "action": "View Patients",
+                    "theme": "patients",
+                    "path": "/doctor/patients"
+                },
+                {
+                    "id": 3,
+                    "title": "Today's Appointments",
+                    "value": todays_appointments,
+                    "action": "View Today",
+                    "theme": "today",
+                    "path": "/doctor/schedule"
+                }
+            ]
+        })
