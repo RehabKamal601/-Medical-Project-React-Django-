@@ -25,8 +25,10 @@ import CustomPagination from "../../CustomPagination.jsx";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { useAuth } from "../../../hooks/useAuth";
 
 const PatientList = () => {
+  const { authToken } = useAuth();
   const [patients, setPatients] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
@@ -37,13 +39,16 @@ const PatientList = () => {
   const patientsPerPage = 5;
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    fullName: "",
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
     address: "",
     age: "",
     gender: "",
-    notes: "",
+    blood_type: "",
+    allergies: "",
+    medical_history: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -57,7 +62,8 @@ const PatientList = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
+    if (!form.first_name.trim()) newErrors.first_name = "First name is required";
+    if (!form.last_name.trim()) newErrors.last_name = "Last name is required";
     if (!validateEmail(form.email)) newErrors.email = "Invalid email format";
     if (!validatePhone(form.phone)) newErrors.phone = "Invalid phone number";
     if (!form.address.trim()) newErrors.address = "Address is required";
@@ -69,8 +75,13 @@ const PatientList = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch("http://localhost:5000/patients");
-      setPatients(await response.json());
+      const response = await fetch("http://localhost:8000/api/patients/", {
+        headers: {
+          "Authorization": `Bearer ${authToken}`,
+        },
+      });
+      const data = await response.json();
+      setPatients(data);
     } catch (error) {
       setSnackbar({
         open: true,
@@ -82,7 +93,7 @@ const PatientList = () => {
 
   useEffect(() => {
     fetchPatients();
-  }, []);
+  }, [authToken]);
 
   const indexOfLastPatient = currentPage * patientsPerPage;
   const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
@@ -98,15 +109,21 @@ const PatientList = () => {
     if (!validateForm()) return;
     try {
       const url = editingPatient
-        ? `http://localhost:5000/patients/${editingPatient.id}`
-        : "http://localhost:5000/patients";
+        ? `http://localhost:8000/api/patients/${editingPatient.id}/update/`
+        : "http://localhost:8000/api/patients/create/";
       const method = editingPatient ? "PUT" : "POST";
+      
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
         body: JSON.stringify(form),
       });
+      
       if (!response.ok) throw new Error("Failed to save");
+      
       fetchPatients();
       setOpenDialog(false);
       setSnackbar({
@@ -126,8 +143,13 @@ const PatientList = () => {
   const handleDelete = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/patients/${patientToDelete.id}`,
-        { method: "DELETE" }
+        `http://localhost:8000/api/patients/${patientToDelete.id}/`,
+        { 
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${authToken}`,
+          },
+        }
       );
       if (!response.ok) throw new Error("Delete failed");
       fetchPatients();
@@ -162,13 +184,16 @@ const PatientList = () => {
             onClick={() => {
               setEditingPatient(null);
               setForm({
-                fullName: "",
+                first_name: "",
+                last_name: "",
                 email: "",
                 phone: "",
                 address: "",
                 age: "",
                 gender: "",
-                notes: "",
+                blood_type: "",
+                allergies: "",
+                medical_history: "",
               });
               setOpenDialog(true);
             }}
@@ -180,10 +205,10 @@ const PatientList = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#199A8E" }}>
+              <TableCell sx={{ color: "#fff" }}>ID</TableCell>
               <TableCell sx={{ color: "#fff" }}>Name</TableCell>
               <TableCell sx={{ color: "#fff" }}>Email</TableCell>
               <TableCell sx={{ color: "#fff" }}>Phone</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Address</TableCell>
               <TableCell sx={{ color: "#fff" }}>Age</TableCell>
               <TableCell sx={{ color: "#fff" }}>Gender</TableCell>
               <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
@@ -192,12 +217,12 @@ const PatientList = () => {
           <TableBody>
             {currentPatients.map((patient) => (
               <TableRow key={patient.id}>
-                <TableCell>{patient.fullName}</TableCell>
-                <TableCell>{patient.email}</TableCell>
+                <TableCell>#{patient.id}</TableCell>
+                <TableCell>{patient.user.first_name} {patient.user.last_name}</TableCell>
+                <TableCell>{patient.user.email}</TableCell>
                 <TableCell>{patient.phone}</TableCell>
-                <TableCell>{patient.address}</TableCell>
                 <TableCell>{patient.age}</TableCell>
-                <TableCell>{patient.gender}</TableCell>
+                <TableCell>{patient.get_gender_display()}</TableCell>
                 <TableCell>
                   <Tooltip title="View Details">
                     <IconButton
@@ -212,13 +237,16 @@ const PatientList = () => {
                       onClick={() => {
                         setEditingPatient(patient);
                         setForm({
-                          fullName: patient.fullName,
-                          email: patient.email,
+                          first_name: patient.user.first_name,
+                          last_name: patient.user.last_name,
+                          email: patient.user.email,
                           phone: patient.phone,
                           address: patient.address,
                           age: patient.age,
                           gender: patient.gender,
-                          notes: patient.notes,
+                          blood_type: patient.blood_type,
+                          allergies: patient.allergies,
+                          medical_history: patient.medical_history,
                         });
                         setOpenDialog(true);
                       }}
@@ -260,12 +288,22 @@ const PatientList = () => {
         </DialogTitle>
         <DialogContent>
           <TextField
-            label="Full Name"
-            name="fullName"
-            value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-            error={!!errors.fullName}
-            helperText={errors.fullName}
+            label="First Name"
+            name="first_name"
+            value={form.first_name}
+            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+            error={!!errors.first_name}
+            helperText={errors.first_name}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Last Name"
+            name="last_name"
+            value={form.last_name}
+            onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+            error={!!errors.last_name}
+            helperText={errors.last_name}
             fullWidth
             margin="normal"
           />
@@ -321,16 +359,33 @@ const PatientList = () => {
             fullWidth
             margin="normal"
           >
-            <MenuItem value="">Select Gender</MenuItem>
-            <MenuItem value="Male">Male</MenuItem>
-            <MenuItem value="Female">Female</MenuItem>
-            <MenuItem value="Other">Other</MenuItem>
+            <MenuItem value="M">Male</MenuItem>
+            <MenuItem value="F">Female</MenuItem>
+            <MenuItem value="O">Other</MenuItem>
           </TextField>
           <TextField
-            label="Notes"
-            name="notes"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            label="Blood Type"
+            name="blood_type"
+            value={form.blood_type}
+            onChange={(e) => setForm({ ...form, blood_type: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Allergies"
+            name="allergies"
+            value={form.allergies}
+            onChange={(e) => setForm({ ...form, allergies: e.target.value })}
+            fullWidth
+            multiline
+            rows={2}
+            margin="normal"
+          />
+          <TextField
+            label="Medical History"
+            name="medical_history"
+            value={form.medical_history}
+            onChange={(e) => setForm({ ...form, medical_history: e.target.value })}
             fullWidth
             multiline
             rows={3}
@@ -348,7 +403,7 @@ const PatientList = () => {
       <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {patientToDelete?.fullName}?
+          Are you sure you want to delete {patientToDelete?.user?.first_name} {patientToDelete?.user?.last_name}?
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>

@@ -36,9 +36,16 @@ urlpatterns = [
     # Doctor
     path('api/doctor/', include('doctor.urls')),
 
+    # Patients
+    path('api/patients/', include('patients.urls')),
+
     # JWT Token
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+]
+
+urlpatterns += [
+    path('api/accounts/', include('accounts.urls')),
 ]
 
 if settings.DEBUG:

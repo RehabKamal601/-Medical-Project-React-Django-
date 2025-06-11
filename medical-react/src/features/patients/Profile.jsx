@@ -1,112 +1,372 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Avatar,
-  // BottomNavigation,
-  // BottomNavigationAction,
-  Card,
-  Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
+  Container,
   Typography,
+  Card,
+  CardContent,
+  Avatar,
   Box,
-  Paper,
+  Button,
+  TextField,
+  Divider,
+  Alert,
+  Snackbar,
+  Grid,
+  MenuItem,
 } from "@mui/material";
-import {
-  Favorite,
-  EventNote,
-  Payment,
-  QuestionAnswer,
-  Logout,
-  // Home,
-  // Chat,
-  // CalendarToday,
-  // Person,
-} from "@mui/icons-material";
+import { useAuth } from "../../hooks/useAuth";
+import PersonIcon from "@mui/icons-material/Person";
+import MedicalInformationIcon from "@mui/icons-material/MedicalInformation";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
 
 const PatientProfile = () => {
-  // const [value, setValue] = React.useState(3); // 3 = Profile tab selected
+  const { authToken, user } = useAuth();
+  const [patient, setPatient] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState({});
+  const [errors, setErrors] = useState({});
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
+  useEffect(() => {
+    const fetchPatientProfile = async () => {
+      try {
+        let token = null;
+        // جلب التوكن من user أو من localStorage
+        if (authToken) {
+          token = authToken;
+        } else if (user && user.access) {
+          token = user.access;
+        } else if (user && user.refresh) {
+          token = user.refresh;
+        } else if (localStorage.getItem("access")) {
+          token = localStorage.getItem("access");
+        } else if (localStorage.getItem("token")) {
+          token = localStorage.getItem("token");
+        }
+        if (!token) {
+          setSnackbar({
+            open: true,
+            message: "يرجى تسجيل الدخول أولاً.",
+            severity: "error",
+          });
+          setLoading(false);
+          return;
+        }
+        const response = await fetch("http://localhost:8000/api/patients/profile/", {
+          headers: {
+            "Authorization": `Bearer ${token}`,
+          },
+        });
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "انتهت صلاحية الجلسة أو لم يتم تسجيل الدخول. يرجى تسجيل الدخول مجددًا.",
+            severity: "error",
+          });
+          setLoading(false);
+          return;
+        }
+        const data = await response.json();
+        setPatient(data);
+        setFormData({
+          first_name: data.user.first_name,
+          last_name: data.user.last_name,
+          email: data.user.email,
+          phone: data.phone,
+          address: data.address,
+          age: data.age,
+          gender: data.gender,
+          blood_type: data.blood_type,
+          allergies: data.allergies,
+          medical_history: data.medical_history,
+        });
+      } catch (error) {
+        setSnackbar({
+          open: true,
+          message: "فشل في جلب بيانات الملف الشخصي. تأكد من تسجيل الدخول.",
+          severity: "error",
+        });
+        console.error("Failed to fetch patient profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPatientProfile();
+  }, [authToken, user]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
+    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
+    if (!formData.email.includes("@")) newErrors.email = "Valid email is required";
+    if (formData.age && (formData.age < 1 || formData.age > 120)) newErrors.age = "Age must be between 1-120";
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) return;
+
+    try {
+      const response = await fetch("http://localhost:8000/api/patients/profile/", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) throw new Error("Failed to update profile");
+
+      const updatedData = await response.json();
+      setPatient(updatedData);
+      setEditMode(false);
+      setSnackbar({
+        open: true,
+        message: "Profile updated successfully",
+        severity: "success",
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: error.message,
+        severity: "error",
+      });
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    if (errors[name]) setErrors({ ...errors, [name]: "" });
+  };
+
+  if (loading) return <Typography sx={{ mt: 4 }}>Loading...</Typography>;
+  if (!patient) return <Typography sx={{ mt: 4 }}>Profile not found</Typography>;
+
+  const fullName = `${patient.user.first_name} ${patient.user.last_name}`;
 
   return (
-    <Box sx={{ pt: 8, pb: 2, bgcolor: "#e0f7f5", minHeight: "100vh" }}>
-      
-      <Card
-        sx={{
-          m: 2,
-          p: 2,
-          borderRadius: 4,
-          textAlign: "center",
-          background: "linear-gradient(to right, #2BC0E4, #EAECC6)",
-          color: "#fff",
-        }}
-      >
-        <Avatar
-          src='https://randomuser.me/api/portraits/women/44.jpg'
-          sx={{ width: 80, height: 80, margin: "0 auto" }}
-        />
-        <Typography variant='h6' sx={{ mt: 1 }}>
-          Amelia Renata
-        </Typography>
-        <Box sx={{ display: "flex", justifyContent: "space-around", mt: 2 }}>
-          <Box>
-            <Typography variant='body2'>Heart rate</Typography>
-            <Typography fontWeight='bold'>215bpm</Typography>
+    <Container sx={{ py: 4 }}>
+      <Card sx={{ maxWidth: 800, mx: "auto", boxShadow: 4 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+            <Typography variant="h4">My Profile</Typography>
+            {editMode ? (
+              <Button
+                variant="contained"
+                startIcon={<SaveIcon />}
+                onClick={handleSave}
+              >
+                Save Changes
+              </Button>
+            ) : (
+              <Button
+                variant="outlined"
+                startIcon={<EditIcon />}
+                onClick={() => setEditMode(true)}
+              >
+                Edit Profile
+              </Button>
+            )}
           </Box>
-          <Box>
-            <Typography variant='body2'>Calories</Typography>
-            <Typography fontWeight='bold'>756cal</Typography>
-          </Box>
-          <Box>
-            <Typography variant='body2'>Weight</Typography>
-            <Typography fontWeight='bold'>103lbs</Typography>
-          </Box>
-        </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={4} sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <Avatar
+                sx={{ 
+                  width: 150, 
+                  height: 150,
+                  bgcolor: "#199A8E",
+                  fontSize: 60,
+                  mb: 2
+                }}
+              >
+                {patient.user.first_name.charAt(0)}{patient.user.last_name.charAt(0)}
+              </Avatar>
+              {editMode ? (
+                <>
+                  <TextField
+                    label="First Name"
+                    name="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                    error={!!errors.first_name}
+                    helperText={errors.first_name}
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    label="Last Name"
+                    name="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                    error={!!errors.last_name}
+                    helperText={errors.last_name}
+                    fullWidth
+                    margin="normal"
+                  />
+                </>
+              ) : (
+                <Typography variant="h5" align="center">
+                  {fullName}
+                </Typography>
+              )}
+            </Grid>
+
+            <Grid item xs={12} md={8}>
+              <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                <PersonIcon /> Personal Information
+              </Typography>
+              
+              {editMode ? (
+                <>
+                  <TextField
+                    label="Email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    error={!!errors.email}
+                    helperText={errors.email}
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    label="Phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    label="Address"
+                    name="address"
+                    value={formData.address}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    multiline
+                    rows={2}
+                  />
+                  <TextField
+                    label="Age"
+                    name="age"
+                    type="number"
+                    value={formData.age}
+                    onChange={handleChange}
+                    error={!!errors.age}
+                    helperText={errors.age}
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    select
+                    label="Gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                  >
+                    <MenuItem value="M">Male</MenuItem>
+                    <MenuItem value="F">Female</MenuItem>
+                    <MenuItem value="O">Other</MenuItem>
+                  </TextField>
+                </>
+              ) : (
+                <>
+                  <Typography><strong>Email:</strong> {patient.user.email}</Typography>
+                  <Typography><strong>Phone:</strong> {patient.phone || "N/A"}</Typography>
+                  <Typography><strong>Address:</strong> {patient.address || "N/A"}</Typography>
+                  <Typography><strong>Age:</strong> {patient.age || "N/A"}</Typography>
+                  <Typography>
+                    <strong>Gender:</strong> {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                  </Typography>
+                </>
+              )}
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+                <MedicalInformationIcon /> Medical Information
+              </Typography>
+              
+              {editMode ? (
+                <>
+                  <TextField
+                    label="Blood Type"
+                    name="blood_type"
+                    value={formData.blood_type}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    label="Allergies"
+                    name="allergies"
+                    value={formData.allergies}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    multiline
+                    rows={2}
+                  />
+                  <TextField
+                    label="Medical History"
+                    name="medical_history"
+                    value={formData.medical_history}
+                    onChange={handleChange}
+                    fullWidth
+                    margin="normal"
+                    multiline
+                    rows={4}
+                  />
+                </>
+              ) : (
+                <>
+                  <Typography>
+                    <strong>Blood Type:</strong> {patient.blood_type || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Allergies:</strong> {patient.allergies || "None recorded"}
+                  </Typography>
+                  {patient.medical_history && (
+                    <>
+                      <Typography><strong>Medical History:</strong></Typography>
+                      <Typography sx={{ whiteSpace: "pre-line", mt: 1 }}>
+                        {patient.medical_history}
+                      </Typography>
+                    </>
+                  )}
+                </>
+              )}
+            </Grid>
+          </Grid>
+        </CardContent>
       </Card>
 
-      {/* Options List */}
-      <Paper sx={{ borderRadius: "24px 24px 0 0", p: 2 }}>
-        <List>
-          <ListItem button>
-            <ListItemIcon>
-              <Favorite sx={{ color: "#3ACCE1" }} />
-            </ListItemIcon>
-            <ListItemText primary='My Saved' />
-          </ListItem>
-          <Divider />
-          <ListItem button>
-            <ListItemIcon>
-              <EventNote sx={{ color: "#3ACCE1" }} />
-            </ListItemIcon>
-            <ListItemText primary='Appointment' />
-          </ListItem>
-          <Divider />
-          <ListItem button>
-            <ListItemIcon>
-              <Payment sx={{ color: "#3ACCE1" }} />
-            </ListItemIcon>
-            <ListItemText primary='Payment Method' />
-          </ListItem>
-          <Divider />
-          <ListItem button>
-            <ListItemIcon>
-              <QuestionAnswer sx={{ color: "#3ACCE1" }} />
-            </ListItemIcon>
-            <ListItemText primary='FAQs' />
-          </ListItem>
-          <Divider />
-          <ListItem button>
-            <ListItemIcon>
-              <Logout sx={{ color: "red" }} />
-            </ListItemIcon>
-            <ListItemText
-              primary='Logout'
-              primaryTypographyProps={{ color: "red" }}
-            />
-          </ListItem>
-        </List>
-      </Paper>
-    </Box>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert 
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+    </Container>
   );
 };
 

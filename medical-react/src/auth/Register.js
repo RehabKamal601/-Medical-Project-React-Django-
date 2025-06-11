@@ -46,7 +46,7 @@ function Register() {
     username: "",
     password: "",
     confirmPassword: "",
-    role: "patient", // default
+    role: "patient", // الديفولت مريض
     specialization: ""
   });
   const [showSpecialization, setShowSpecialization] = useState(false);
@@ -314,8 +314,11 @@ function Register() {
                 },
               }}
               disabled={
-                Object.values(formData).some((v) => !v) ||
-                Object.values(errors).some((e) => e)
+                // تحقق من الحقول المطلوبة فقط
+                (formData.role === "doctor"
+                  ? ["name", "email", "username", "password", "confirmPassword", "role", "specialization"]
+                  : ["name", "email", "username", "password", "confirmPassword", "role"]
+                ).some((field) => !formData[field] || errors[field])
               }
             >
               Sign Up

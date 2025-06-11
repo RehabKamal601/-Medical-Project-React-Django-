@@ -125,3 +125,35 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
             return user.doctor
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile linked to this user.")
+
+class DoctorListView(generics.ListAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+    filterset_fields = ['specialization']
+    search_fields = ['user__username', 'specialization']
+
+class DoctorDetailView(generics.RetrieveAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+
+class DoctorAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    def get_queryset(self):
+        doctor_id = self.kwargs['doctor_id']
+        return Appointment.objects.filter(doctor_id=doctor_id)
+
+class PatientAppointmentsView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    def get_queryset(self):
+        return Appointment.objects.filter(patient_name=self.request.user.username)
+
+class AppointmentCancelView(generics.DestroyAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+class AppointmentRescheduleView(generics.UpdateAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]

@@ -53,10 +53,9 @@ const PatientSidebar = ({ drawerWidth = 240, mobileOpen, onDrawerToggle }) => {
         <List>
           {menuItems.map((item) => (
             <ListItem
-              button
-              key={item.text}
               component={NavLink}
               to={item.path}
+              key={item.text}
               sx={{
                 color: "text.primary",
                 "&.active": {

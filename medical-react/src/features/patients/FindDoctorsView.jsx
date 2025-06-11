@@ -37,7 +37,7 @@ const FindDoctorsView = () => {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/doctors")
+      .get("http://localhost:8000/api/doctor/doctors/")
       .then((res) => {
         console.log(res.data); // <-- check this
         setDoctors(res.data);
