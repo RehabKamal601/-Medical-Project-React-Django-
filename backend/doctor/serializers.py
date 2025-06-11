@@ -1,6 +1,7 @@
 # //serializers
 from rest_framework import serializers
-from .models import Doctor, DoctorAvailability, Appointment, User
+from .models import Doctor, DoctorAvailability, Appointment
+from django.contrib.auth.models import User  # إذا كنت تستخدم User الافتراضي
 
 
 class UserSerializer(serializers.ModelSerializer):

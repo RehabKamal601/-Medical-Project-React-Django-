@@ -10,6 +10,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTH_USER_MODEL = 'accounts.User'
+
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -23,6 +26,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'rest_framework_simplejwt',
+    'accounts',
 
     # Apps
     'doctor',
@@ -31,7 +35,7 @@ INSTALLED_APPS = [
 
 
 ]
-AUTH_USER_MODEL = 'doctor.User'
+
 
 
 MIDDLEWARE = [
@@ -49,6 +53,9 @@ MIDDLEWARE = [
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',  # Require login
+        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
+
+
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT auth
@@ -71,6 +78,7 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
     'TOKEN_TYPE_CLAIM': 'token_type',
+     
 }
 
 CORS_ALLOW_ALL_ORIGINS = True  # Only for development

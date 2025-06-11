@@ -65,14 +65,14 @@ const DoctorAvailability = () => {
         });
 
         setAvailability(response.data);
-        const initDays = {};
+      const initDays = {};
         response.data.forEach(item => {
-          initDays[item.day] = {
+        initDays[item.day] = {
             start: item.start_time,
             end: item.end_time
-          };
-        });
-        setSelectedDays(initDays);
+        };
+      });
+      setSelectedDays(initDays);
       } catch (error) {
         console.error("Error fetching availability:", error);
         if (error.response?.status === 401 || error.response?.status === 403) {
@@ -126,11 +126,11 @@ const DoctorAvailability = () => {
       // Fetch updated availability
       const response = await axios.get(`${API_BASE_URL}/availability/`);
       setAvailability(response.data);
-      setIsSaving(false);
-      setOpenSuccessModal(true);
+              setIsSaving(false);
+              setOpenSuccessModal(true);
     } catch (error) {
       console.error("Error saving availability:", error);
-      setIsSaving(false);
+            setIsSaving(false);
       if (error.response?.status === 401) {
         alert("Please login to save availability");
       } else {
