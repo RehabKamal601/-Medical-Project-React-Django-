@@ -1,6 +1,6 @@
 # accounts/views.py
 from rest_framework import generics
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from .models import CustomUser
-from .serializers import RegisterSerializer, EmailTokenObtainPairSerializer, CustomTokenObtainPairSerializer
+from .serializers import RegisterSerializer, EmailTokenObtainPairSerializer, CustomTokenObtainPairSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -47,3 +47,10 @@ class LoginView(APIView):
                 'role': data.get('role'),
             }, status=200)
         return Response(serializer.errors, status=400)
+
+class UserDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)

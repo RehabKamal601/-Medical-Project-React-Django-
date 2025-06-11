@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import DoctorViewSet
 from .views import (
     DoctorRegisterView, DoctorAvailabilityCreateView,
- AppointmentListView, AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView
+ AppointmentListView, AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView,
+ DoctorDashboardStats
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ urlpatterns = [
 
     path('appointments/<int:pk>/update/', AppointmentUpdateView.as_view(), name='appointment-update'),
     path('profile/update/', DoctorProfileUpdateView.as_view(), name='doctor-profile-update'),
+    path('dashboard/stats/', DoctorDashboardStats.as_view(), name='doctor-dashboard-stats'),
 
 
 

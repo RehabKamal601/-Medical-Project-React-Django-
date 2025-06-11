@@ -20,41 +20,15 @@ const DoctorAvailability = () => {
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
 
   // Update the base URL to match your Django backend
-  const API_BASE_URL = "http://localhost:8000/api";
-
-  // Add axios interceptor for authentication
-  useEffect(() => {
-    // Add a request interceptor
-    const interceptor = axios.interceptors.request.use(
-      (config) => {
-        // Get the token from localStorage
-        const token = localStorage.getItem('token');
-        if (token) {
-          // Add token to headers
-          config.headers.Authorization = `Bearer ${token}`;
-        } else {
-          console.warn('No authentication token found');
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
-
-    // Clean up interceptor on component unmount
-    return () => {
-      axios.interceptors.request.eject(interceptor);
-    };
-  }, []);
+  const API_BASE_URL = "http://localhost:8000/api/doctor";
 
   useEffect(() => {
     // Fetch doctor's availability
     const fetchAvailability = async () => {
       try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('access_token');
         if (!token) {
-          alert('Please login first');
+          console.error('No token found');
           return;
         }
 
@@ -75,11 +49,8 @@ const DoctorAvailability = () => {
         setSelectedDays(initDays);
       } catch (error) {
         console.error("Error fetching availability:", error);
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          alert("Please login to view availability");
-          // You might want to redirect to login page here
-        } else {
-          alert("Error loading availability. Please try again later.");
+        if (error.response?.status === 401) {
+          console.error("Authentication error");
         }
       }
     };
@@ -112,19 +83,40 @@ const DoctorAvailability = () => {
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      // Delete existing availability
+      await axios.delete(`${API_BASE_URL}/availability/`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
       // Create availability entries for each selected day
       const availabilityPromises = Object.entries(selectedDays).map(([day, times]) => {
         return axios.post(`${API_BASE_URL}/availability/`, {
           day: day,
           start_time: times.start,
           end_time: times.end
+        }, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
         });
       });
 
       await Promise.all(availabilityPromises);
       
       // Fetch updated availability
-      const response = await axios.get(`${API_BASE_URL}/availability/`);
+      const response = await axios.get(`${API_BASE_URL}/availability/`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       setAvailability(response.data);
       setIsSaving(false);
       setOpenSuccessModal(true);
@@ -132,9 +124,7 @@ const DoctorAvailability = () => {
       console.error("Error saving availability:", error);
       setIsSaving(false);
       if (error.response?.status === 401) {
-        alert("Please login to save availability");
-      } else {
-        alert("Error saving availability. Please try again later.");
+        console.error("Authentication error");
       }
     }
   };
@@ -270,7 +260,7 @@ const DoctorAvailability = () => {
             <WatchLater />
             Current Availability
           </Typography>
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={2} flexWrap="wrap">
             {availability.map(item => (
               <Chip
                 key={item.day}

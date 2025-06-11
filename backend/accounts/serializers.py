@@ -68,3 +68,12 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
             'role': user.role,
             'username': user.username,
         }
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'username', 'email', 'role', 'specialization']
+        read_only_fields = ['id', 'role']
+        extra_kwargs = {
+            'specialization': {'required': False, 'allow_blank': True}
+        }

@@ -4,7 +4,7 @@ import {
   Chip, Avatar, Divider, IconButton, Stack, Tabs, Tab, MenuItem,
   Select, InputLabel, FormControl, Pagination
 } from "@mui/material";
-import axios from "axios";
+import axiosInstance from "../../api/axios";
 import {
   CheckCircle, Cancel, AccessTime, Edit,
   CalendarToday, WatchLater, Notes,
@@ -39,7 +39,7 @@ const DoctorAppointments = () => {
   useEffect(() => {
   const fetchAppointments = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/appointments/");
+      const response = await axiosInstance.get("/doctor/appointments/");
       setAppointments(response.data);
     } catch (error) {
       console.error("Axios Error:", error);
@@ -50,7 +50,7 @@ const DoctorAppointments = () => {
 
 
   const handleStatusChange = (id, status) => {
-    axios.patch(`http://localhost:8000/appointments/${id}`, { status })
+    axiosInstance.patch(`/doctor/appointments/${id}`, { status })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>
@@ -61,7 +61,7 @@ const DoctorAppointments = () => {
   };
 
   const handleNoteChange = (id, note) => {
-    axios.patch(`http://localhost:8000/appointments/${id}/`, { notes: note })
+    axiosInstance.patch(`/doctor/appointments/${id}/`, { notes: note })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>

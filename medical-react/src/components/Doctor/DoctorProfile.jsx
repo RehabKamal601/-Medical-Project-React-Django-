@@ -1,52 +1,119 @@
 import React, { useEffect, useState } from "react";
 import { 
   Box, TextField, Typography, Button, Paper,
-  Avatar, Divider, InputAdornment, Modal, Backdrop, Fade
+  Avatar, Divider, InputAdornment, Modal, Backdrop, Fade,
+  Alert, Snackbar, CircularProgress
 } from "@mui/material";
-import axios from "axios";
+import axiosInstance from "../../api/axios";
 import {
   Person, Email, Phone, MedicalServices,
-  Description, CheckCircle
+  Description, CheckCircle, Home
 } from "@mui/icons-material";
 import { styles } from "../doctorStyle/DoctorProfile.styles";
 
 const DoctorProfile = () => {
   const [profile, setProfile] = useState({
-    name: "",
-    email: "",
+    user: {
+      username: "",
+      email: "",
+      password: ""  // This will be empty and won't be updated
+    },
+    specialization: "",
     phone: "",
-    specialty: "",
-    bio: ""
+    bio: "",
+    image: null,
+    address: ""
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
 
-  const doctorId = 1;
-
   useEffect(() => {
-    axios.get(`http://localhost:5000/doctors/${doctorId}`).then(res => {
-      setProfile(res.data);
-    });
+    const fetchProfile = async () => {
+      try {
+        const response = await axiosInstance.get('/doctor/profile/update/');
+        console.log('Profile data:', response.data);
+        setProfile(response.data);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching profile:', err);
+        setError('Failed to load profile data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setProfile(prev => ({ ...prev, [name]: value }));
+    if (name.includes('.')) {
+      // Handle nested objects (e.g., user.email)
+      const [parent, child] = name.split('.');
+      setProfile(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setProfile(prev => ({ ...prev, [name]: value }));
+    }
   };
 
-  const handleSave = () => {
-    axios.put(`http://localhost:5000/doctors/${doctorId}`, profile)
-      .then(() => {
-        setOpenSuccessModal(true);
-      })
-      .catch(() => alert("Error updating profile"));
+  const handleSave = async () => {
+    try {
+      // Create a copy of the profile data without the password field
+      const dataToSend = {
+        ...profile,
+        user: {
+          ...profile.user,
+          password: undefined // Remove password from the request
+        }
+      };
+      
+      const response = await axiosInstance.put('/doctor/profile/update/', dataToSend);
+      console.log('Profile updated:', response.data);
+      setProfile(response.data);
+      setOpenSuccessModal(true);
+      setError(null);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err.response?.data?.detail || 'Failed to update profile. Please try again.');
+    }
   };
 
   const handleCloseSuccessModal = () => {
     setOpenSuccessModal(false);
   };
 
+  const handleCloseError = () => {
+    setError(null);
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="80vh">
+        <CircularProgress />
+      </Box>
+    );
+  }
+
   return (
     <Box sx={styles.container}>
+      <Snackbar 
+        open={!!error} 
+        autoHideDuration={6000} 
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseError} severity="error" sx={{ width: '100%' }}>
+          {error}
+        </Alert>
+      </Snackbar>
+
       {/* Success Modal */}
       <Modal
         open={openSuccessModal}
@@ -84,16 +151,16 @@ const DoctorProfile = () => {
       <Paper elevation={3} sx={styles.paper}>
         <Box sx={styles.avatarContainer}>
           <Avatar
-            src="/doctor-avatar.jpg"
+            src={profile.image || "/doctor-avatar.jpg"}
             sx={styles.avatar}
           />
         </Box>
         
         <TextField
           fullWidth
-          label="Name"
-          name="name"
-          value={profile.name}
+          label="Username"
+          name="user.username"
+          value={profile.user.username}
           onChange={handleChange}
           margin="normal"
           InputProps={{
@@ -109,8 +176,8 @@ const DoctorProfile = () => {
         <TextField
           fullWidth
           label="Email"
-          name="email"
-          value={profile.email}
+          name="user.email"
+          value={profile.user.email}
           onChange={handleChange}
           margin="normal"
           InputProps={{
@@ -143,14 +210,31 @@ const DoctorProfile = () => {
         <TextField
           fullWidth
           label="Specialty"
-          name="specialty"
-          value={profile.specialty}
+          name="specialization"
+          value={profile.specialization}
           onChange={handleChange}
           margin="normal"
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
                 <MedicalServices color="primary" />
+              </InputAdornment>
+            ),
+          }}
+          sx={styles.textField}
+        />
+
+        <TextField
+          fullWidth
+          label="Address"
+          name="address"
+          value={profile.address}
+          onChange={handleChange}
+          margin="normal"
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Home color="primary" />
               </InputAdornment>
             ),
           }}
