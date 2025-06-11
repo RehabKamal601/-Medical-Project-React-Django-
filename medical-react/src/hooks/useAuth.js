@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
           errorMsg = data.password[0];
         }
         console.error('Login error details:', data);
-        return { success: false, error: errorMsg };
+        return { success: false, message: errorMsg }; // <-- fix: use message not error
       }
       if (response.ok) {
         setUser({
@@ -61,11 +61,11 @@ export const AuthProvider = ({ children }) => {
         });
         return { success: true, ...data };
       } else {
-        return { success: false, error: data.detail || JSON.stringify(data) || 'فشل تسجيل الدخول' };
+        return { success: false, message: data.detail || JSON.stringify(data) || 'فشل تسجيل الدخول' }; // <-- fix: use message not error
       }
     } catch (error) {
       console.error('Login failed:', error);
-      return { success: false, error: 'فشل تسجيل الدخول' };
+      return { success: false, message: 'فشل تسجيل الدخول' };
     }
   };
   const registerUser = async (userData) => {
