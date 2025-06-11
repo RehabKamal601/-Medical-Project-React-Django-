@@ -26,7 +26,24 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
+// Helper to get CSRF token from cookies
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 const DoctorsList = () => {
+  const csrftoken = getCookie("csrftoken");
   const [doctors, setDoctors] = useState([]);
   const [specialties, setSpecialties] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -69,12 +86,52 @@ const DoctorsList = () => {
 
   const fetchDoctors = async () => {
     try {
+      const headers = {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      };
+
+      // Add session ID if available
+      const sessionId = localStorage.getItem("sessionid");
+      if (sessionId) {
+        headers["Authorization"] = `Session ${sessionId}`;
+      }
+
       const [doctorsRes, specialtiesRes] = await Promise.all([
-        fetch("http://localhost:5000/doctors"),
-        fetch("http://localhost:5000/specialties"),
+        fetch("http://127.0.0.1:8000/api/admin/doctors/", {
+          credentials: "include",
+          headers,
+        }),
+        fetch("http://127.0.0.1:8000/api/admin/specialties/", {
+          credentials: "include",
+          headers,
+        }),
       ]);
-      setDoctors(await doctorsRes.json());
-      setSpecialties(await specialtiesRes.json());
+
+      if (doctorsRes.status === 401 || specialtiesRes.status === 401) {
+        // Handle unauthorized access
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
+
+      const doctorsData = await doctorsRes.json();
+      const specialtiesData = await specialtiesRes.json();
+
+      setDoctors(
+        Array.isArray(doctorsData)
+          ? doctorsData
+          : doctorsData.results || doctorsData.data || []
+      );
+      setSpecialties(
+        Array.isArray(specialtiesData)
+          ? specialtiesData
+          : specialtiesData.results || specialtiesData.data || []
+      );
     } catch (error) {
       setSnackbar({
         open: true,
@@ -132,17 +189,40 @@ const DoctorsList = () => {
 
     try {
       const url = editingDoctor
-        ? `http://localhost:5000/doctors/${editingDoctor.id}`
-        : "http://localhost:5000/doctors";
+        ? `http://127.0.0.1:8000/api/admin/doctors/${editingDoctor.id}/`
+        : "http://127.0.0.1:8000/api/admin/doctors/";
       const method = editingDoctor ? "PUT" : "POST";
+
+      const headers = {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      };
+
+      // Add session ID if available
+      const sessionId = localStorage.getItem("sessionid");
+      if (sessionId) {
+        headers["Authorization"] = `Session ${sessionId}`;
+      }
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify(form),
+        credentials: "include",
       });
 
-      if (!response.ok) throw new Error("Failed to save doctor");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Failed to save doctor");
+      }
 
       fetchDoctors();
       setOpenDialog(false);
@@ -169,12 +249,38 @@ const DoctorsList = () => {
 
   const handleConfirmDelete = async () => {
     try {
+      const headers = {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrftoken,
+      };
+
+      // Add session ID if available
+      const sessionId = localStorage.getItem("sessionid");
+      if (sessionId) {
+        headers["Authorization"] = `Session ${sessionId}`;
+      }
+
       const response = await fetch(
-        `http://localhost:5000/doctors/${doctorToDelete.id}`,
-        { method: "DELETE" }
+        `http://127.0.0.1:8000/api/admin/doctors/${doctorToDelete.id}/`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers,
+        }
       );
 
-      if (!response.ok) throw new Error("Delete failed");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Delete failed");
+      }
 
       fetchDoctors();
       setConfirmOpen(false);
