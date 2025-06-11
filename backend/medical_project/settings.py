@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,13 +22,17 @@ INSTALLED_APPS = [
     # REST Framework & Token Auth
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt',
 
     # Apps
     'doctor',
     'admin_api',
     'corsheaders',
-    'rest_framework_simplejwt',
+
+
 ]
+AUTH_USER_MODEL = 'doctor.User'
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
@@ -42,9 +47,14 @@ MIDDLEWARE = [
 
 # REST Framework settings
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # Require login
+    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',  # JWT auth
+        'rest_framework.authentication.SessionAuthentication',  # Login from Django admin
+        'rest_framework.authentication.BasicAuthentication',    # Postman basic auth
+    ],
 }
 
 # JWT settings
@@ -63,7 +73,7 @@ SIMPLE_JWT = {
     'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
-CORS_ALLOW_ALL_ORIGINS = True  # (مؤقتًا أثناء التطوير)
+CORS_ALLOW_ALL_ORIGINS = True  # Only for development
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -102,7 +112,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'medical_db',
         'USER': 'postgres',
-        'PASSWORD': '1919',
+        'PASSWORD': 'postgres',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -128,15 +138,3 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Media (Uploads)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# REST Framework settings
-REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',  # Require login
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',  # Login from Django admin
-        'rest_framework.authentication.BasicAuthentication',    # Postman basic auth
-        'rest_framework.authentication.TokenAuthentication',    # Token-based authentication
-    ],
-}
