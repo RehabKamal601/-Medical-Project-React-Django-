@@ -40,9 +40,10 @@ class LoginView(APIView):
         serializer = EmailTokenObtainPairSerializer(data=request.data)
         if serializer.is_valid():
             data = serializer.validated_data
-            # أعد فقط التوكنات المطلوبة ولا ترجع role أو username إذا لم تكن مهمة للواجهة
+            # Return role in the response for frontend routing
             return Response({
                 'refresh': data.get('refresh'),
                 'access': data.get('access'),
+                'role': data.get('role'),
             }, status=200)
         return Response(serializer.errors, status=400)

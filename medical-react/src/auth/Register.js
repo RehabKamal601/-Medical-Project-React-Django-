@@ -46,7 +46,10 @@ function Register() {
     username: "",
     password: "",
     confirmPassword: "",
+    role: "patient", // default
+    specialization: ""
   });
+  const [showSpecialization, setShowSpecialization] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
@@ -55,12 +58,16 @@ function Register() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
-
+    if (name === "role") {
+      setShowSpecialization(value === "doctor");
+      if (value !== "doctor") {
+        setFormData((prev) => ({ ...prev, specialization: "" }));
+      }
+    }
     validateField(name, value);
     setFormError("");
   };
@@ -105,10 +112,9 @@ function Register() {
   };
 
   const validateForm = () => {
-    const fields = ["name", "email", "username", "password", "confirmPassword"];
+    const fields = ["name", "email", "username", "password", "confirmPassword", "role"];
     let isValid = true;
     let newErrors = {};
-
     fields.forEach((field) => {
       const value = formData[field];
       validateField(field, value);
@@ -117,7 +123,10 @@ function Register() {
         isValid = false;
       }
     });
-
+    if (formData.role === "doctor" && formData.specialization.trim() === "") {
+      newErrors.specialization = "Specialization is required for doctors";
+      isValid = false;
+    }
     setErrors(newErrors);
     return isValid;
   };
@@ -125,20 +134,21 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const isValid = validateForm();
-
     if (!isValid) {
       setFormError("Please fill in all required fields correctly.");
       return;
     }
-
-    const response = await registerUser({
+    const regData = {
       name: formData.name,
       username: formData.username,
       email: formData.email,
       password: formData.password,
-      role: "patient" // Default role for new users
-    });
-
+      role: formData.role,
+    };
+    if (formData.role === "doctor") {
+      regData.specialization = formData.specialization;
+    }
+    const response = await registerUser(regData);
     if (response.success) {
       navigate("/login");
     } else {
@@ -203,26 +213,91 @@ function Register() {
           )}
 
           <form onSubmit={handleSubmit}>
-            {["name", "email", "username", "password", "confirmPassword"].map(
-              (field) => (
-                <TextField
-                  key={field}
-                  label={
-                    field === "confirmPassword"
-                      ? "Confirm Password"
-                      : field.charAt(0).toUpperCase() + field.slice(1)
-                  }
-                  type={field.includes("password") ? "password" : "text"}
-                  name={field}
-                  value={formData[field]}
-                  onChange={handleInputChange}
-                  error={!!errors[field]}
-                  helperText={errors[field]}
-                  fullWidth
-                  margin="normal"
-                  variant="outlined"
-                />
-              )
+            <TextField
+              label="Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              error={!!errors.name}
+              helperText={errors.name}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+            />
+            <TextField
+              label="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              error={!!errors.email}
+              helperText={errors.email}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+            />
+            <TextField
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              error={!!errors.username}
+              helperText={errors.username}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+            />
+            <TextField
+              label="Password"
+              type="password"
+              name="password"
+              value={formData.password}
+              onChange={handleInputChange}
+              error={!!errors.password}
+              helperText={errors.password}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+            />
+            <TextField
+              label="Confirm Password"
+              type="password"
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              error={!!errors.confirmPassword}
+              helperText={errors.confirmPassword}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+            />
+            <TextField
+              select
+              label="Role"
+              name="role"
+              value={formData.role}
+              onChange={handleInputChange}
+              error={!!errors.role}
+              helperText={errors.role}
+              fullWidth
+              margin="normal"
+              variant="outlined"
+              SelectProps={{ native: true }}
+            >
+              <option value="patient">Patient</option>
+              <option value="doctor">Doctor</option>
+            </TextField>
+            {showSpecialization && (
+              <TextField
+                label="Specialization"
+                name="specialization"
+                value={formData.specialization}
+                onChange={handleInputChange}
+                error={!!errors.specialization}
+                helperText={errors.specialization}
+                fullWidth
+                margin="normal"
+                variant="outlined"
+              />
             )}
 
             <Button
