@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
           errorMsg = data.password[0];
         }
         console.error('Login error details:', data);
-        return { success: false, error: errorMsg };
+        return { success: false, message: errorMsg }; // <-- fix: use message not error
       }
       if (response.ok) {
         setUser({
@@ -61,47 +61,13 @@ export const AuthProvider = ({ children }) => {
         });
         return { success: true, ...data };
       } else {
-        return { success: false, error: data.detail || JSON.stringify(data) || 'فشل تسجيل الدخول' };
+        return { success: false, message: data.detail || JSON.stringify(data) || 'فشل تسجيل الدخول' }; // <-- fix: use message not error
       }
     } catch (error) {
       console.error('Login failed:', error);
-      return { success: false, error: 'فشل تسجيل الدخول' };
+      return { success: false, message: 'فشل تسجيل الدخول' };
     }
   };
-/*
-  const registerUser = async (userData) => {
-    try {
-      // Remove 'name' field if present
-      const { name, ...userDataToSend } = userData;
-      console.log("Sending registration data:", userDataToSend);
-      const response = await fetch('http://localhost:8000/api/accounts/register/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userDataToSend),
-      });
-
-      const contentType = response.headers.get("content-type");
-
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON response:", text);
-        return { success: false, message: "Invalid server response" };
-      }
-
-      const data = await response.json();
-
-      if (response.ok) {
-        return { success: true };
-      } else {
-        return { success: false, message: data.detail || "Registration failed." };
-      }
-    } catch (error) {
-      console.error("Registration error:", error);
-      return { success: false, message: "An error occurred during registration." };
-    }
-  };*/
   const registerUser = async (userData) => {
   try {
     const { name, ...userDataToSend } = userData;

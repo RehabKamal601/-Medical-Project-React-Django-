@@ -12,20 +12,27 @@ User = get_user_model()
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'password', 'role']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'username', 'email', 'password', 'role', 'specialization']
+        extra_kwargs = {'password': {'write_only': True}, 'specialization': {'required': False, 'allow_blank': True}}
 
     def create(self, validated_data):
+        specialization = validated_data.pop('specialization', None)
         user = CustomUser.objects.create_user(**validated_data)
+        if user.role == 'doctor' and specialization:
+            user.specialization = specialization
+            user.save()
         return user
 
     def to_representation(self, instance):
-        return {
+        data = {
             "id": instance.id,
             "username": instance.username,
             "email": instance.email,
             "role": instance.role
         }
+        if instance.role == 'doctor':
+            data["specialization"] = getattr(instance, 'specialization', '')
+        return data
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     @classmethod

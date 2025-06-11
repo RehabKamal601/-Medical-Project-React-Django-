@@ -99,7 +99,14 @@ function Login() {
     const response = await loginUser(formData);
 
     if (response.success) {
-      navigate('/patient');
+      // Redirect based on user role if available
+      if (response.role === 'doctor') {
+        navigate('/doctor');
+      } else if (response.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/patient');
+      }
     } else {
       setFormError(response.message);
     }
