@@ -1,13 +1,14 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Styles/AuthStyles.css";
+import React, { useState } from 'react';
 import {
+  Container,
   TextField,
   Button,
-  Alert,
   Typography,
-  Box
-} from "@mui/material";
+  Box,
+  Alert
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 
 // Primary color and its variants
 const primaryColor = "#199A8E";
@@ -15,6 +16,7 @@ const primaryLight = "#E0F2F1";
 const primaryDark = "#0D6E64";
 
 function Login() {
+  const { loginUser } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -94,37 +96,12 @@ function Login() {
       return;
     }
 
-    try {
-      const res = await fetch("http://localhost:5000/users");
-      const users = await res.json();
+    const response = await loginUser(formData);
 
-      const matchedUser = users.find(
-        (user) =>
-          user.email === formData.email && user.password === formData.password
-      );
-
-      if (!matchedUser) {
-        setFormError("Invalid email or password.");
-        return;
-      }
-
-      localStorage.setItem("currentUser", JSON.stringify(matchedUser));
-
-      switch (matchedUser.role) {
-        case "admin":
-          navigate("/admin");
-          break;
-        case "doctor":
-          navigate("/doctor");
-          break;
-        case "patient":
-          navigate("/patient");
-          break;
-        default:
-          navigate("/dashboard");
-      }
-    } catch (error) {
-      setFormError("Something went wrong. Please try again.");
+    if (response.success) {
+      navigate('/patient');
+    } else {
+      setFormError(response.message);
     }
   };
 
@@ -133,102 +110,111 @@ function Login() {
   };
 
   return (
-    <div className="auth-container">
-      <img
-        src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1S1f3JArA7vEeeUQ5yQXwwtTcBxE87X0KHg&s"
-        alt="Logo"
-        className="auth-logo"
-      />
-      <Typography 
-        className="auth-title"
-        sx={{ 
-          color: primaryColor,
-          fontWeight: 600,
-          mb: 3
+    <Container maxWidth="xs">
+      <Box 
+        mt={8}
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center'
         }}
       >
-        Welcome Back
-      </Typography>
-
-      {formError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {formError}
-        </Alert>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <TextField
-          label="Email"
-          type="email"
-          name="email"
-          value={formData.email}
-          onChange={handleInputChange}
-          error={!!errors.email}
-          helperText={errors.email}
-          fullWidth
-          margin="normal"
-          sx={{ mb: 2 }}
+        <img
+          src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS1S1f3JArA7vEeeUQ5yQXwwtTcBxE87X0KHg&s"
+          alt="Logo"
+          style={{ width: '100px', marginBottom: '20px' }}
         />
-        <TextField
-          label="Password"
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleInputChange}
-          error={!!errors.password}
-          helperText={errors.password}
-          fullWidth
-          margin="normal"
-          sx={{ mb: 2 }}
-        />
-        <Button
-          type="submit"
-          variant="contained"
-          fullWidth
-          sx={{
-            mt: 2,
-            mb: 2,
-            py: 1.5,
-            backgroundColor: primaryColor,
-            color: "#fff",
+        <Typography 
+          variant="h4"
+          sx={{ 
+            color: primaryColor,
             fontWeight: 600,
-            "&:hover": {
-              backgroundColor: primaryDark,
-            },
+            mb: 3
           }}
-          disabled={
-            Object.values(formData).some((v) => !v) ||
-            Object.values(errors).some((e) => e)
-          }
         >
-          Log In
-        </Button>
-        
-        {/* Register Button */}
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
-            Don't have an account?
-          </Typography>
+          Welcome Back
+        </Typography>
+
+        {formError && (
+          <Alert severity="error" sx={{ mb: 2, width: '100%' }}>
+            {formError}
+          </Alert>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+          <TextField
+            label="Email"
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleInputChange}
+            error={!!errors.email}
+            helperText={errors.email}
+            fullWidth
+            margin="normal"
+            sx={{ mb: 2 }}
+          /> 
+          <TextField
+            label="Password"
+            type="password"
+            name="password"
+            value={formData.password}
+            onChange={handleInputChange}
+            error={!!errors.password}
+            helperText={errors.password}
+            fullWidth
+            margin="normal"
+            sx={{ mb: 2 }}
+          />
           <Button
-            variant="outlined"
+            type="submit"
+            variant="contained"
             fullWidth
             sx={{
+              mt: 2,
+              mb: 2,
               py: 1.5,
-              borderColor: primaryColor,
-              color: primaryColor,
+              backgroundColor: primaryColor,
+              color: "#fff",
               fontWeight: 600,
               "&:hover": {
-                backgroundColor: primaryLight,
-                borderColor: primaryDark,
+                backgroundColor: primaryDark,
               },
             }}
-            onClick={handleRegisterClick}
+            disabled={
+              Object.values(formData).some((v) => !v) ||
+              Object.values(errors).some((e) => e)
+            }
           >
-            Register Now
+            Log In
           </Button>
-        </Box>
-      </form>
-    </div>
+          
+          {/* Register Button */}
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
+              Don't have an account?
+            </Typography>
+            <Button
+              variant="outlined"
+              fullWidth
+              sx={{
+                py: 1.5,
+                borderColor: primaryColor,
+                color: primaryColor,
+                fontWeight: 600,
+                "&:hover": {
+                  backgroundColor: primaryLight,
+                  borderColor: primaryDark,
+                },
+              }}
+              onClick={handleRegisterClick}
+            >
+              Register Now
+            </Button>
+          </Box>
+        </form>
+      </Box>
+    </Container>
   );
 }
 

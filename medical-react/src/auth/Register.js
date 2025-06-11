@@ -1,18 +1,19 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
 import {
-  Box,
   Container,
   TextField,
-  Typography,
   Button,
-  Avatar,
+  Typography,
+  Box,
   Alert,
+  Avatar,
   CssBaseline,
   ThemeProvider,
-  createTheme,
-} from "@mui/material";
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
+  createTheme
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 
 const theme = createTheme({
   palette: {
@@ -35,8 +36,10 @@ const theme = createTheme({
   },
 });
 
-const Register = () => {
+function Register() {
   const navigate = useNavigate();
+  const { registerUser } = useAuth();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -49,6 +52,18 @@ const Register = () => {
   const [formError, setFormError] = useState("");
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+
+    validateField(name, value);
+    setFormError("");
+  };
 
   const validateField = (name, value) => {
     let error = "";
@@ -89,18 +104,6 @@ const Register = () => {
     }));
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    validateField(name, value);
-    setFormError("");
-  };
-
   const validateForm = () => {
     const fields = ["name", "email", "username", "password", "confirmPassword"];
     let isValid = true;
@@ -128,42 +131,23 @@ const Register = () => {
       return;
     }
 
-    try {
-      // Check if email already exists
-      const checkResponse = await fetch(
-        `http://localhost:5000/users?email=${formData.email}`
-      );
-      const existingUsers = await checkResponse.json();
+    const response = await registerUser({
+      name: formData.name,
+      username: formData.username,
+      email: formData.email,
+      password: formData.password,
+      role: "patient" // Default role for new users
+    });
 
-      if (existingUsers.length > 0) {
-        setFormError("Email already exists. Please use a different email.");
-        return;
-      }
-
-      // Register new user
-      const response = await fetch("http://localhost:5000/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          username: formData.username,
-          email: formData.email,
-          password: formData.password,
-          role: "patient", // Default role for new users
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Registration failed");
-      }
-
-      // Redirect to login after successful registration
+    if (response.success) {
       navigate("/login");
-    } catch (error) {
-      setFormError(error.message || "Registration failed. Please try again.");
+    } else {
+      setFormError(response.message);
     }
+  };
+
+  const handleLoginClick = () => {
+    navigate("/login");
   };
 
   return (
@@ -261,11 +245,33 @@ const Register = () => {
             >
               Sign Up
             </Button>
+
+            <Typography variant="body2" sx={{ mt: 2, color: "#64748b", textAlign: 'center' }}>
+              Already have an account?
+            </Typography>
+            <Button
+              fullWidth
+              variant="outlined"
+              size="large"
+              sx={{
+                mt: 1,
+                fontWeight: "bold",
+                color: "primary.main",
+                borderColor: "primary.main",
+                "&:hover": {
+                  backgroundColor: "#E0F2F1",
+                  borderColor: "primary.dark",
+                },
+              }}
+              onClick={handleLoginClick}
+            >
+              Login
+            </Button>
           </form>
         </Container>
       </Box>
     </ThemeProvider>
   );
-};
+}
 
 export default Register;
