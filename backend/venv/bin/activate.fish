@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /media/dell/Data/medical/backend/venv
+set -gx VIRTUAL_ENV /home/i/Documents/react/M_project/-Medical-Project-React-Django-/backend/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

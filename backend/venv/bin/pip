@@ -1,4 +1,4 @@
-#!/media/dell/Data/medical/backend/venv/bin/python3
+#!/home/i/Documents/react/M_project/-Medical-Project-React-Django-/backend/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

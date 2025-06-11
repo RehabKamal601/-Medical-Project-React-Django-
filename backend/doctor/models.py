@@ -1,10 +1,11 @@
 # //models
 from django.db import models
 from django.contrib.auth.models import User
+from django.conf import settings
 
 
 class Doctor(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     specialization = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     bio = models.TextField(blank=True)
