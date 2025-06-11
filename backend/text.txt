@@ -1,0 +1,43 @@
+{
+    "username": "dr.rehab",
+    "email": "dr.rehab@example.com",
+    "password": "SecurePass123!",
+    "password2": "SecurePass123!",
+    "role": "doctor",
+    "first_name": "rehab",
+    "last_name": "kamal",
+    "specialization": "Cardiology",
+    "phone": "+1234567890",
+    "bio": "Experienced cardiologist",
+    "address": "123 Medical Center Ave"
+}
+
+
+{
+    "username": "admin_user",
+    "email": "admin@medical.com",
+    "password": "AdminPass123!",
+    "password2": "AdminPass123!",
+    "first_name": "Admin",
+    "last_name": "User",
+    "role": "admin"
+}
+
+
+
+{
+    "username": "patient_john",
+    "email": "john.patient@example.com",
+    "password": "PatientPass123!",
+    "password2": "PatientPass123!",
+    "first_name": "John",
+    "last_name": "Smith",
+    "role": "patient"
+}
+
+
+
+
+
+
+
