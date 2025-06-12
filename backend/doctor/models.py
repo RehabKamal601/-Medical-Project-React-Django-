@@ -7,20 +7,12 @@ from django.core.exceptions import ValidationError
 
 
 class Doctor(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE )
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor')
     specialization = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     bio = models.TextField(blank=True)
     image = models.ImageField(upload_to='doctor_images/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True)
-
-    # user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor_profile')
-    # specialization = models.CharField(max_length=100)
-    # phone = models.CharField(max_length=20)
-    # address = models.CharField(max_length=255, blank=True)
-    # bio = models.TextField(blank=True)
-    # image = models.ImageField(upload_to='doctor_images/', blank=True, null=True)
-
 
     def __str__(self):
         return f"Dr. {self.user.first_name} {self.user.last_name}"
@@ -66,14 +58,6 @@ class DoctorAvailability(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
-
-
-class DoctorAvailability(models.Model):
-    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
-    day = models.CharField(max_length=10)  # e.g., Monday, Tuesday
-    start_time = models.TimeField()
-    end_time = models.TimeField()
-
     def __str__(self):
         return f"{self.doctor} - {self.day} {self.start_time}-{self.end_time}"
 
@@ -81,7 +65,6 @@ class DoctorAvailability(models.Model):
 class Appointment(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
-    patient_name = models.CharField(max_length=100)
     date = models.DateTimeField()
     status = models.CharField(max_length=10, choices=[
         ('pending', 'Pending'),
@@ -91,5 +74,4 @@ class Appointment(models.Model):
     notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.patient} - {self.date} - {self.status}"
-        return f"{self.patient_name} - {self.date} - {self.status}"
+        return f"{self.patient.user.get_full_name()} - {self.date} - {self.status}"

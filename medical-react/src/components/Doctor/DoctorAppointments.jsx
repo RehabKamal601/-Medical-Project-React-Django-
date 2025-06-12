@@ -221,10 +221,10 @@ const DoctorAppointments = () => {
           }} />
           <Box>
             <Typography variant="subtitle1" fontWeight={600} color="text.primary" fontSize="1rem">
-              {appt.patientName}
+              {appt.patient_name}
             </Typography>
             <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
-              ID: {appt.patientId}
+              ID: {appt.patient_id}
             </Typography>
           </Box>
         </Stack>

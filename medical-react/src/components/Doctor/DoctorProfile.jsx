@@ -5,10 +5,12 @@ import {
   Alert, Snackbar, CircularProgress
 } from "@mui/material";
 import axiosInstance from "../../api/axios";
+import { useAuth } from "../../hooks/useAuth";
 import {
   Person, Email, Phone, MedicalServices,
   Description, CheckCircle, Home
 } from "@mui/icons-material";
+
 const styles = {
   container: {
     p: 3,
@@ -87,6 +89,7 @@ const styles = {
 };
 
 const DoctorProfile = () => {
+  const { user: authUser, updateUser } = useAuth();
   const [profile, setProfile] = useState({
     user: {
       username: "",
@@ -199,21 +202,18 @@ const DoctorProfile = () => {
       const userData = {
         first_name: profile.user.first_name?.trim(),
         last_name: profile.user.last_name?.trim(),
-        email: profile.user.email?.trim()
+        email: profile.user.email?.trim(),
+        username: profile.user.username?.trim()
       };
 
-      // Add user fields to formData
-      Object.entries(userData).forEach(([key, value]) => {
-        if (value) {
-          formData.append(`user.${key}`, value);
-        }
-      });
+      // Add user fields to formData as a stringified JSON object
+      formData.append('user', JSON.stringify(userData));
 
-      // Add profile data
+      // Add profile data directly
       const profileFields = ['specialization', 'phone', 'bio', 'address'];
       profileFields.forEach(key => {
         const value = profile[key]?.trim();
-        if (value) {
+        if (value !== undefined) {
           formData.append(key, value);
         }
       });
@@ -223,25 +223,20 @@ const DoctorProfile = () => {
         formData.append('image', profile.image);
       }
 
-      // Log the FormData contents for debugging
-      console.log('Form data contents:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, ':', value);
-      }
-
       const response = await axiosInstance.put('/doctor/profile/update/', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
 
-      console.log('Profile updated:', response.data);
-      
       // Update profile with response data
       setProfile(prev => ({
         ...response.data,
         imagePreview: prev.imagePreview // Keep the preview
       }));
+
+      // Update auth context with new user data
+      await updateUser();
       
       setOpenSuccessModal(true);
       setError(null);
