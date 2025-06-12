@@ -6,6 +6,7 @@ from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
+import json
 
 from .models import Doctor, DoctorAvailability, Appointment
 from .serializers import (
@@ -114,23 +115,19 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
         try:
             instance = self.get_object()
             
-            # Prepare user data from the request
-            user_data = {}
-            if 'user.first_name' in request.data:
-                user_data['first_name'] = request.data['user.first_name']
-            if 'user.last_name' in request.data:
-                user_data['last_name'] = request.data['user.last_name']
-            if 'user.email' in request.data:
-                user_data['email'] = request.data['user.email']
-            if 'user.username' in request.data:
-                # Check if username is already taken
-                new_username = request.data['user.username']
-                if User.objects.filter(username=new_username).exclude(id=instance.user.id).exists():
+            # Parse the user data from the request
+            user_data = None
+            if 'user' in request.data:
+                try:
+                    if isinstance(request.data['user'], str):
+                        user_data = json.loads(request.data['user'])
+                    else:
+                        user_data = request.data['user']
+                except json.JSONDecodeError:
                     return Response(
-                        {'user.username': ['Username is already taken']},
+                        {'user': 'Invalid JSON format'},
                         status=status.HTTP_400_BAD_REQUEST
                     )
-                user_data['username'] = new_username
 
             # Prepare doctor data
             doctor_data = {
@@ -146,16 +143,24 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
 
             # Combine data for serializer
             data = {
-                'user': user_data,
                 **doctor_data
             }
+            if user_data:
+                data['user'] = user_data
+
+            print("Data being sent to serializer:", data)  # Debug print
 
             serializer = self.get_serializer(instance, data=data, partial=True)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
 
+            # Refresh from database to ensure we have latest data
+            instance.refresh_from_db()
+            instance.user.refresh_from_db()
+
             return Response(serializer.data)
         except Exception as e:
+            print("Error in update:", str(e))  # Debug print
             return Response(
                 {'detail': str(e)},
                 status=status.HTTP_400_BAD_REQUEST

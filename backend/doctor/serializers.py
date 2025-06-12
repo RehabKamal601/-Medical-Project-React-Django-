@@ -104,6 +104,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from .models import Doctor, DoctorAvailability, Appointment
+from django.core.exceptions import ValidationError
+import json
 
 User = get_user_model()
 
@@ -112,6 +114,11 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name']
         read_only_fields = ['id']
+        extra_kwargs = {
+            'username': {
+                'validators': []  # Remove the UniqueValidator
+            }
+        }
 
 class DoctorSerializer(serializers.ModelSerializer):
     user = UserSerializer()
@@ -122,20 +129,59 @@ class DoctorSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'full_name', 'specialization', 'phone', 'bio', 'image', 'address']
 
     def get_full_name(self, obj):
-        return f"Dr. {obj.user.first_name} {obj.user.last_name}".strip()
+        first_name = obj.user.first_name.strip() if obj.user.first_name else ''
+        last_name = obj.user.last_name.strip() if obj.user.last_name else ''
+        if first_name or last_name:
+            return f"Dr. {first_name} {last_name}".strip()
+        return f"Dr. {obj.user.username}"
+
+    def validate(self, data):
+        user_data = data.get('user')
+        if user_data and 'username' in user_data:
+            new_username = user_data['username']
+            # Get the current user instance
+            instance = getattr(self, 'instance', None)
+            if instance:
+                current_user = instance.user
+                # Only check uniqueness if username is changing
+                if new_username != current_user.username:
+                    if User.objects.exclude(pk=current_user.pk).filter(username=new_username).exists():
+                        raise serializers.ValidationError({
+                            'user': {'username': ['This username is already taken.']}
+                        })
+        return data
 
     def update(self, instance, validated_data):
         user_data = validated_data.pop('user', None)
         if user_data:
-            user_serializer = UserSerializer(instance.user, data=user_data, partial=True)
-            if user_serializer.is_valid(raise_exception=True):
-                user_serializer.save()
+            user = instance.user
+            
+            # Update user fields
+            for field in ['username', 'email', 'first_name', 'last_name']:
+                if field in user_data:
+                    value = user_data.get(field)
+                    if value is not None:  # Allow empty strings but not None
+                        setattr(user, field, value)
+            
+            try:
+                user.save()
+            except Exception as e:
+                raise serializers.ValidationError({'user': str(e)})
 
+        # Update Doctor model fields
         for attr, value in validated_data.items():
-            if value is not None:  # Only update if value is provided
+            if value is not None:  # Allow empty strings but not None
                 setattr(instance, attr, value)
         
-        instance.save()
+        try:
+            instance.save()
+        except Exception as e:
+            raise serializers.ValidationError(str(e))
+
+        # Refresh from database
+        instance.refresh_from_db()
+        instance.user.refresh_from_db()
+        
         return instance
 
     def to_representation(self, instance):
