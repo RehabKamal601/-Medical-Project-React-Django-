@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 
 
+
 class Doctor(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE )
     specialization = models.CharField(max_length=100)
@@ -65,6 +66,14 @@ class DoctorAvailability(models.Model):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+
+
+class DoctorAvailability(models.Model):
+    doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='availability')
+    day = models.CharField(max_length=10)  # e.g., Monday, Tuesday
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+
     def __str__(self):
         return f"{self.doctor} - {self.day} {self.start_time}-{self.end_time}"
 
@@ -72,6 +81,7 @@ class DoctorAvailability(models.Model):
 class Appointment(models.Model):
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
+    patient_name = models.CharField(max_length=100)
     date = models.DateTimeField()
     status = models.CharField(max_length=10, choices=[
         ('pending', 'Pending'),
@@ -82,3 +92,4 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"{self.patient} - {self.date} - {self.status}"
+        return f"{self.patient_name} - {self.date} - {self.status}"

@@ -56,6 +56,7 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
         model = DoctorAvailability
         fields = ['id', 'doctor', 'day', 'start_time', 'end_time']
         read_only_fields = ['id']
+        fields = '__all__'
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

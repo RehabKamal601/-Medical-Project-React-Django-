@@ -98,3 +98,42 @@ logs/
 
 __pycache__/
 *.pyc
+
+# Python virtual environment
+venv/
+.venv/
+env/
+.env/
+backend/venv/
+**/venv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE settings
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build files
+/build
+/dist
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System Files
+.DS_Store
+Thumbs.db

@@ -189,6 +189,25 @@ class DoctorAvailabilityCreateView(APIView):
             
         DoctorAvailability.objects.filter(doctor=doctor).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+class DoctorAvailabilityCreateView(generics.ListCreateAPIView):
+    serializer_class = DoctorAvailabilitySerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        try:
+            doctor = self.request.user.doctor
+            return DoctorAvailability.objects.filter(doctor=doctor)
+        except Doctor.DoesNotExist:
+            raise NotAuthenticated("No doctor profile found for this user.")
+
+    def perform_create(self, serializer):
+        try:
+            doctor = self.request.user.doctor
+            serializer.save(doctor=doctor)
+        except Doctor.DoesNotExist:
+            raise NotAuthenticated("No doctor profile found for this user.")
+
+
 
 class AppointmentListView(generics.ListAPIView):
     queryset = Appointment.objects.all()
