@@ -26,24 +26,11 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
-// Helper to get CSRF token from cookies
-function getCookie(name) {
-  let cookieValue = null;
-  if (document.cookie && document.cookie !== "") {
-    const cookies = document.cookie.split(";");
-    for (let i = 0; i < cookies.length; i++) {
-      const cookie = cookies[i].trim();
-      if (cookie.substring(0, name.length + 1) === name + "=") {
-        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-        break;
-      }
-    }
-  }
-  return cookieValue;
-}
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
 
 const DoctorsList = () => {
-  const csrftoken = getCookie("csrftoken");
   const [doctors, setDoctors] = useState([]);
   const [specialties, setSpecialties] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -60,7 +47,6 @@ const DoctorsList = () => {
     phone: "",
     specialtyId: "",
     bio: "",
-    image: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -70,7 +56,6 @@ const DoctorsList = () => {
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^[0-9]{10,15}$/.test(phone);
-  const validateImageUrl = (url) => /\.(jpeg|jpg|gif|png|svg)$/i.test(url);
 
   const validateForm = () => {
     const newErrors = {};
@@ -79,59 +64,38 @@ const DoctorsList = () => {
     if (!validatePhone(form.phone)) newErrors.phone = "Invalid phone number";
     if (!form.specialtyId) newErrors.specialtyId = "Specialty is required";
     if (!form.bio.trim()) newErrors.bio = "Bio is required";
-    if (!validateImageUrl(form.image)) newErrors.image = "Invalid image URL";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const fetchDoctors = async () => {
     try {
+      const token = getAuthToken();
       const headers = {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
+        Authorization: `Bearer ${token}`,
       };
 
-      // Add session ID if available
-      const sessionId = localStorage.getItem("sessionid");
-      if (sessionId) {
-        headers["Authorization"] = `Session ${sessionId}`;
-      }
-
       const [doctorsRes, specialtiesRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/admin/doctors/", {
-          credentials: "include",
-          headers,
-        }),
-        fetch("http://127.0.0.1:8000/api/admin/specialties/", {
-          credentials: "include",
-          headers,
-        }),
+        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/admin/specialties/", { headers }),
       ]);
 
       if (doctorsRes.status === 401 || specialtiesRes.status === 401) {
-        // Handle unauthorized access
         setSnackbar({
           open: true,
           message: "Session expired. Please login again.",
           severity: "error",
         });
-        navigate("/admin/login");
+        navigate("/login");
         return;
       }
 
       const doctorsData = await doctorsRes.json();
       const specialtiesData = await specialtiesRes.json();
 
-      setDoctors(
-        Array.isArray(doctorsData)
-          ? doctorsData
-          : doctorsData.results || doctorsData.data || []
-      );
-      setSpecialties(
-        Array.isArray(specialtiesData)
-          ? specialtiesData
-          : specialtiesData.results || specialtiesData.data || []
-      );
+      setDoctors(doctorsData);
+      setSpecialties(specialtiesData);
     } catch (error) {
       setSnackbar({
         open: true,
@@ -160,7 +124,6 @@ const DoctorsList = () => {
       phone: "",
       specialtyId: "",
       bio: "",
-      image: "",
     });
     setErrors({});
     setOpenDialog(true);
@@ -169,12 +132,11 @@ const DoctorsList = () => {
   const handleOpenEdit = (doctor) => {
     setEditingDoctor(doctor);
     setForm({
-      fullName: doctor.fullName,
+      fullName: doctor.name,
       email: doctor.email,
       phone: doctor.phone,
-      specialtyId: doctor.specialtyId,
+      specialtyId: doctor.specialty,
       bio: doctor.bio,
-      image: doctor.image,
     });
     setErrors({});
     setOpenDialog(true);
@@ -188,6 +150,7 @@ const DoctorsList = () => {
     if (!validateForm()) return;
 
     try {
+      const token = getAuthToken();
       const url = editingDoctor
         ? `http://127.0.0.1:8000/api/admin/doctors/${editingDoctor.id}/`
         : "http://127.0.0.1:8000/api/admin/doctors/";
@@ -195,20 +158,21 @@ const DoctorsList = () => {
 
       const headers = {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
+        Authorization: `Bearer ${token}`,
       };
 
-      // Add session ID if available
-      const sessionId = localStorage.getItem("sessionid");
-      if (sessionId) {
-        headers["Authorization"] = `Session ${sessionId}`;
-      }
+      const requestData = {
+        name: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        specialty: form.specialtyId,
+        bio: form.bio,
+      };
 
       const response = await fetch(url, {
         method,
         headers,
-        body: JSON.stringify(form),
-        credentials: "include",
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -249,22 +213,16 @@ const DoctorsList = () => {
 
   const handleConfirmDelete = async () => {
     try {
+      const token = getAuthToken();
       const headers = {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrftoken,
+        Authorization: `Bearer ${token}`,
       };
-
-      // Add session ID if available
-      const sessionId = localStorage.getItem("sessionid");
-      if (sessionId) {
-        headers["Authorization"] = `Session ${sessionId}`;
-      }
 
       const response = await fetch(
         `http://127.0.0.1:8000/api/admin/doctors/${doctorToDelete.id}/`,
         {
           method: "DELETE",
-          credentials: "include",
           headers,
         }
       );
@@ -303,6 +261,12 @@ const DoctorsList = () => {
     setConfirmOpen(false);
   };
 
+  const getSpecialtyName = (specialtyId) => {
+    if (!specialtyId) return "Without specialization";
+    const specialty = specialties.find((s) => s.id === specialtyId);
+    return specialty ? specialty.name : "Without specialization";
+  };
+
   return (
     <Box sx={{ backgroundColor: "#F5F8FF", minHeight: "100vh", p: 4 }}>
       <Paper elevation={3} sx={{ p: 3, borderRadius: "24px" }}>
@@ -332,11 +296,8 @@ const DoctorsList = () => {
           <TableBody>
             {currentDoctors.map((doctor) => (
               <TableRow key={doctor.id}>
-                <TableCell>{doctor.fullName}</TableCell>
-                <TableCell>
-                  {specialties.find((s) => s.id === doctor.specialtyId)?.name ||
-                    "N/A"}
-                </TableCell>
+                <TableCell>{doctor.name}</TableCell>
+                <TableCell>{getSpecialtyName(doctor.specialty)}</TableCell>
                 <TableCell>{doctor.email}</TableCell>
                 <TableCell>{doctor.phone}</TableCell>
                 <TableCell>
@@ -446,16 +407,6 @@ const DoctorsList = () => {
             rows={3}
             margin="normal"
           />
-          <TextField
-            label="Image URL *"
-            name="image"
-            value={form.image}
-            onChange={(e) => setForm({ ...form, image: e.target.value })}
-            error={!!errors.image}
-            helperText={errors.image || "Must be valid image URL"}
-            fullWidth
-            margin="normal"
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
@@ -468,7 +419,7 @@ const DoctorsList = () => {
       <Dialog open={confirmOpen} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {doctorToDelete?.fullName}?
+          Are you sure you want to delete {doctorToDelete?.name}?
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelDelete}>Cancel</Button>
