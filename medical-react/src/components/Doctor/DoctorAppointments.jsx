@@ -2,21 +2,29 @@ import { useEffect, useState } from "react";
 import {
   Typography, Paper, Box, Button, TextField, Grid,
   Chip, Avatar, Divider, IconButton, Stack, Tabs, Tab, MenuItem,
-  Select, InputLabel, FormControl, Pagination
+  Select, InputLabel, FormControl, Pagination, Alert, Snackbar
 } from "@mui/material";
-import axios from "axios";
+import axiosInstance from "../../api/axios";
 import {
-  CheckCircle, Cancel, AccessTime, Edit,
-  CalendarToday, WatchLater, Notes,
-  Save, Close, FilterAlt
+  CheckCircle,
+  Cancel,
+  AccessTime,
+  Edit,
+  CalendarToday,
+  WatchLater,
+  Notes,
+  Save,
+  Close,
+  FilterAlt,
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { styles } from "../doctorStyle/DoctorAppointments.styles";
 import { useAuth } from "../../hooks/useAuth";
 
-
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editingNotes, setEditingNotes] = useState(null);
   const [tempNotes, setTempNotes] = useState("");
   const [tab, setTab] = useState(0);
@@ -27,17 +35,19 @@ const DoctorAppointments = () => {
   const itemsPerPage = 4;
   const { user } = useAuth();
   const [authError, setAuthError] = useState("");
+  const [openSuccessModal, setOpenSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const daysOfWeek = [
-    "Sunday", "Monday", "Tuesday", "Wednesday", 
-    "Thursday", "Friday", "Saturday"
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
   ];
 
-  // useEffect(() => {
-  //   axios.get("http://localhost:8000/appointments/").then(res => {
-  //     setAppointments(res.data);
-  //   });
-  // }, []);
   useEffect(() => {
     const fetchAppointments = async () => {
       setAuthError("");
@@ -47,7 +57,7 @@ const DoctorAppointments = () => {
         return;
       }
       try {
-        const response = await axios.get("http://localhost:8000/api/doctor/appointments/", {
+        const response = await axiosInstance.get("http://localhost:8000/api/doctor/appointments/", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAppointments(response.data);
@@ -79,7 +89,7 @@ const DoctorAppointments = () => {
       setAuthError("You are not authenticated. Please log in again.");
       return;
     }
-    axios.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { status }, {
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { status }, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(() => {
@@ -88,6 +98,8 @@ const DoctorAppointments = () => {
             appt.id === id ? { ...appt, status } : appt
           )
         );
+        setSuccessMessage("Status updated successfully.");
+        setOpenSuccessModal(true);
       })
       .catch((error) => {
         if (error.response && error.response.status === 401) {
@@ -106,7 +118,7 @@ const DoctorAppointments = () => {
       setAuthError("You are not authenticated. Please log in again.");
       return;
     }
-    axios.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { notes: note }, {
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { notes: note }, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(() => {
@@ -115,6 +127,8 @@ const DoctorAppointments = () => {
             appt.id === id ? { ...appt, notes: note } : appt
           )
         );
+        setSuccessMessage("Notes updated successfully.");
+        setOpenSuccessModal(true);
       })
       .catch((error) => {
         if (error.response && error.response.status === 401) {
@@ -178,29 +192,32 @@ const DoctorAppointments = () => {
   const now = dayjs();
 
   const sortByDateDesc = (list) =>
-    [...list].sort((a, b) =>
-      dayjs(`${b.date} ${b.time}`).valueOf() - dayjs(`${a.date} ${a.time}`).valueOf()
+    [...list].sort(
+      (a, b) =>
+        dayjs(`${b.date} ${b.time}`).valueOf() -
+        dayjs(`${a.date} ${a.time}`).valueOf()
     );
 
   const filteredAppointments = (status, isPast = false) => {
     let filtered = appointments;
-    
+
     if (isPast) {
-      filtered = filtered.filter(appt =>
+      filtered = filtered.filter((appt) =>
         dayjs(`${appt.date} ${appt.time}`).isBefore(now)
       );
     } else if (status) {
-      filtered = filtered.filter(appt => appt.status === status);
+      filtered = filtered.filter((appt) => appt.status === status);
     }
-    
+
     return sortByDateDesc(
-      filtered.filter(appt => {
+      filtered.filter((appt) => {
         const appointmentDate = dayjs(`${appt.date} ${appt.time}`);
         const dayName = appointmentDate.format("dddd");
-        
+
         if (filterType === "all") return true;
         if (filterType === "day" && selectedDay) return dayName === selectedDay;
-        if (filterType === "date" && selectedDate) return appt.date === selectedDate;
+        if (filterType === "date" && selectedDate)
+          return appt.date === selectedDate;
         return false;
       })
     );
@@ -217,7 +234,7 @@ const DoctorAppointments = () => {
       (page - 1) * itemsPerPage,
       page * itemsPerPage
     );
-    
+
     return { data: paginatedData, totalPages };
   };
 
@@ -230,17 +247,23 @@ const DoctorAppointments = () => {
     <Grid item xs={12} sm={6} md={2} key={appt.id}>
       <Paper elevation={0} sx={styles.appointmentCard}>
         <Stack direction="row" spacing={1.5} alignItems="center" mb={1.5}>
-          <Avatar sx={{
-            ...styles.avatar,
-            bgcolor: appt.status === "approved" ? "#10b981" :
-                     appt.status === "rejected" ? "#ef4444" : "#f59e0b",
-          }} />
+          <Avatar
+            sx={{
+              ...styles.avatar,
+              bgcolor:
+                appt.status === "approved"
+                  ? "#10b981"
+                  : appt.status === "rejected"
+                  ? "#ef4444"
+                  : "#f59e0b",
+            }}
+          />
           <Box>
             <Typography variant="subtitle1" fontWeight={600} color="text.primary" fontSize="1rem">
-              {appt.patientName}
+              {appt.patient_name}
             </Typography>
             <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
-              ID: {appt.patientId}
+              ID: {appt.patient_id}
             </Typography>
           </Box>
         </Stack>
@@ -250,23 +273,37 @@ const DoctorAppointments = () => {
         <Box mb={1.5}>
           <Stack direction="row" spacing={0.5} alignItems="center" mb={1}>
             <CalendarToday sx={styles.statusIcon} />
-            <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              fontSize="0.9rem"
+            >
               {dayjs(appt.date).format("DD/MM/YYYY")}
             </Typography>
           </Stack>
           <Stack direction="row" spacing={0.5} alignItems="center" mb={1}>
             <WatchLater sx={styles.statusIcon} />
-            <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              fontSize="0.9rem"
+            >
               {appt.time}
             </Typography>
           </Stack>
-          <Box>
-            {getStatusChip(appt.status)}
-          </Box>
+          <Box>{getStatusChip(appt.status)}</Box>
         </Box>
 
         <Box mt="auto">
-          <Typography variant="subtitle2" fontWeight={600} color="text.primary" mb={1} display="flex" alignItems="center" fontSize="0.95rem">
+          <Typography
+            variant="subtitle2"
+            fontWeight={600}
+            color="text.primary"
+            mb={1}
+            display="flex"
+            alignItems="center"
+            fontSize="0.95rem"
+          >
             <Notes sx={{ mr: 0.5, ...styles.statusIcon }} />
             Notes
           </Typography>
@@ -305,7 +342,11 @@ const DoctorAppointments = () => {
             </Box>
           ) : (
             <Paper variant="outlined" sx={styles.notesPaper}>
-              <Typography variant="body2" color="text.secondary" sx={{ width: "100%", fontSize: "0.9rem" }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ width: "100%", fontSize: "0.9rem" }}
+              >
                 {appt.notes || "No notes added"}
               </Typography>
               <IconButton
@@ -349,17 +390,27 @@ const DoctorAppointments = () => {
 
   const renderAppointments = (data) => {
     const { data: paginatedData, totalPages } = paginate(data);
-    
+
     return (
       <>
         <Grid container spacing={2}>
-          {paginatedData.length ? paginatedData.map(renderAppointmentCard) : (
+          {paginatedData.length ? (
+            paginatedData.map(renderAppointmentCard)
+          ) : (
             <Grid item xs={12}>
               <Paper sx={styles.noAppointmentsPaper}>
-                <Typography variant="h6" color="text.secondary" fontSize="1.1rem">
+                <Typography
+                  variant="h6"
+                  color="text.secondary"
+                  fontSize="1.1rem"
+                >
                   No appointments found
                 </Typography>
-                <Typography variant="body2" color="text.disabled" sx={{ mt: 1, fontSize: "0.9rem" }}>
+                <Typography
+                  variant="body2"
+                  color="text.disabled"
+                  sx={{ mt: 1, fontSize: "0.9rem" }}
+                >
                   {tab === 0 && "No pending appointments available"}
                   {tab === 1 && "No accepted appointments available"}
                   {tab === 2 && "No rejected appointments available"}
@@ -369,7 +420,7 @@ const DoctorAppointments = () => {
             </Grid>
           )}
         </Grid>
-        
+
         {totalPages > 1 && (
           <Box sx={styles.paginationBox}>
             <Pagination
@@ -394,7 +445,12 @@ const DoctorAppointments = () => {
       <Box sx={styles.headerBox}>
         <CalendarToday sx={styles.calendarIcon} />
         <Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary" fontSize="1.25rem">
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color="text.primary"
+            fontSize="1.25rem"
+          >
             Appointments Management
           </Typography>
           <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
@@ -404,7 +460,13 @@ const DoctorAppointments = () => {
       </Box>
 
       <Paper sx={styles.filterPaper}>
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <FilterAlt sx={styles.filterIcon} />
           <FormControl size="small" sx={styles.formControl}>
             <InputLabel>Filter Type</InputLabel>
@@ -417,9 +479,15 @@ const DoctorAppointments = () => {
               label="Filter Type"
               sx={styles.selectStyle}
             >
-              <MenuItem value="all" sx={styles.menuItemStyle}>All Appointments</MenuItem>
-              <MenuItem value="day" sx={styles.menuItemStyle}>By Day of Week</MenuItem>
-              <MenuItem value="date" sx={styles.menuItemStyle}>By Specific Date</MenuItem>
+              <MenuItem value="all" sx={styles.menuItemStyle}>
+                All Appointments
+              </MenuItem>
+              <MenuItem value="day" sx={styles.menuItemStyle}>
+                By Day of Week
+              </MenuItem>
+              <MenuItem value="date" sx={styles.menuItemStyle}>
+                By Specific Date
+              </MenuItem>
             </Select>
           </FormControl>
 
@@ -435,8 +503,10 @@ const DoctorAppointments = () => {
                 label="Select Day"
                 sx={styles.selectStyle}
               >
-                {daysOfWeek.map(day => (
-                  <MenuItem key={day} value={day} sx={styles.menuItemStyle}>{day}</MenuItem>
+                {daysOfWeek.map((day) => (
+                  <MenuItem key={day} value={day} sx={styles.menuItemStyle}>
+                    {day}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -458,7 +528,7 @@ const DoctorAppointments = () => {
             />
           )}
 
-          {(filterType !== "all" && (selectedDay || selectedDate)) && (
+          {filterType !== "all" && (selectedDay || selectedDate) && (
             <Button
               variant="outlined"
               size="small"
@@ -502,8 +572,33 @@ const DoctorAppointments = () => {
       {tab === 1 && renderAppointments(acceptedAppointments)}
       {tab === 2 && renderAppointments(rejectedAppointments)}
       {tab === 3 && renderAppointments(pastAppointments)}
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={openSuccessModal}
+        autoHideDuration={6000}
+        onClose={() => setOpenSuccessModal(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setOpenSuccessModal(false)} severity="success" sx={{ width: "100%" }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={6000}
+        onClose={() => setError("")}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setError("")} severity="error" sx={{ width: "100%" }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
+
 
 export default DoctorAppointments;

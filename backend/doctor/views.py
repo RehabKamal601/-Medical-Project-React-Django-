@@ -1,159 +1,236 @@
 # //view
-from rest_framework import viewsets, status
+from rest_framework import viewsets, status, generics, permissions
 from rest_framework.response import Response
-from .models import Doctor
-from .serializers import DoctorSerializer
-from .serializers import DoctorRegisterSerializer
-from .models import Doctor
-from .models import DoctorAvailability
-from .serializers import DoctorAvailabilitySerializer
+from rest_framework.views import APIView
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from django.db.models import Count
+from datetime import date
+from django.contrib.auth import get_user_model
+import json
 
-from .models import Appointment
-from .serializers import AppointmentSerializer
-from rest_framework.exceptions import NotAuthenticated
+from .models import Doctor, DoctorAvailability, Appointment
+from .serializers import (
+    DoctorSerializer,
+    DoctorRegisterSerializer,
+    DoctorAvailabilitySerializer,
+    AppointmentSerializer
+)
 
+User = get_user_model()
 
-from rest_framework import generics, permissions
-
-
-
+class IsDoctor(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and request.user.role == 'doctor'
 
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
-
-
-
-# i want when register give him token
+    permission_classes = [permissions.IsAuthenticated]
 
 class DoctorRegisterView(generics.CreateAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorRegisterSerializer
+    permission_classes = [permissions.AllowAny]
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        doctor = serializer.save()
 
+        return Response({
+            'id': doctor.id,
+            'user_id': doctor.user.id,
+            'username': doctor.user.username,
+            'email': doctor.user.email,
+            'specialization': doctor.specialization,
+            'message': 'Doctor registered successfully'
+        }, status=status.HTTP_201_CREATED)
 
-# class DoctorRegisterView(generics.CreateAPIView):
-#     queryset = Doctor.objects.all()
-#     serializer_class = DoctorRegisterSerializer
+class DoctorAvailabilityCreateView(APIView):
+    permission_classes = [IsDoctor]
 
-#     def perform_create(self, serializer):
-#         # Create doctor + user
-#         user = serializer.save()
-#         self.user = user
-
-#     def create(self, request, *args, **kwargs):
-#         serializer = self.get_serializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-#         self.perform_create(serializer)
-
-#         # Generate token for the created user
-#         refresh = RefreshToken.for_user(self.user)
-
-#         response_data = {
-#             'refresh': str(refresh),
-#             'access': str(refresh.access_token),
-#             'user': {
-#                 'id': self.user.id,
-#                 'username': self.user.username,
-#                 'email': self.user.email,
-#             }
-#         }
-
-#         headers = self.get_success_headers(serializer.data)
-#         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
-
-class DoctorAvailabilityCreateView(generics.ListCreateAPIView):
-    serializer_class = DoctorAvailabilitySerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
+    def get_doctor(self, request):
         try:
-            doctor = self.request.user.doctor
-            return DoctorAvailability.objects.filter(doctor=doctor)
+            return request.user.doctor
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile found for this user.")
 
-    def perform_create(self, serializer):
-        try:
-            doctor = self.request.user.doctor
-            serializer.save(doctor=doctor)
-        except Doctor.DoesNotExist:
-            raise NotAuthenticated("No doctor profile found for this user.")
+    def get(self, request):
+        doctor = self.get_doctor(request)
+        availability = DoctorAvailability.objects.filter(doctor=doctor)
+        serializer = DoctorAvailabilitySerializer(availability, many=True)
+        return Response(serializer.data)
 
+    def post(self, request):
+        doctor = self.get_doctor(request)
+        data = request.data.copy()
+        data['doctor'] = doctor.id
+        
+        serializer = DoctorAvailabilitySerializer(data=data)
+        if serializer.is_valid():
+            availability = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    def delete(self, request):
+        doctor = self.get_doctor(request)
+        DoctorAvailability.objects.filter(doctor=doctor).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 class AppointmentListView(generics.ListAPIView):
-    queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsDoctor]
 
     def get_queryset(self):
-        try:
-            doctor = self.request.user.doctor
-            return Appointment.objects.filter(doctor=doctor)
-        except Doctor.DoesNotExist:
-            raise NotAuthenticated("No doctor profile found for this user.")
+        return Appointment.objects.filter(doctor=self.request.user.doctor)
 
 class AppointmentUpdateView(generics.UpdateAPIView):
-    queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
+    permission_classes = [IsDoctor]
+
+    def get_queryset(self):
+        return Appointment.objects.filter(doctor=self.request.user.doctor)
+
+class AppointmentCreateView(generics.CreateAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        if self.request.user.role == 'doctor':
+            serializer.save(doctor=self.request.user.doctor)
+        else:
+            serializer.save()
+
+class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
+    serializer_class = DoctorSerializer
+    permission_classes = [IsDoctor]
+
+    def get_object(self):
+        try:
+            return self.request.user.doctor
+        except Doctor.DoesNotExist:
+            raise NotAuthenticated("No doctor profile found for this user.")
+            
+    def update(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            
+            # Parse the user data from the request
+            user_data = None
+            if 'user' in request.data:
+                try:
+                    if isinstance(request.data['user'], str):
+                        user_data = json.loads(request.data['user'])
+                    else:
+                        user_data = request.data['user']
+                except json.JSONDecodeError:
+                    return Response(
+                        {'user': 'Invalid JSON format'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+            # Prepare doctor data
+            doctor_data = {
+                'specialization': request.data.get('specialization', ''),
+                'phone': request.data.get('phone', ''),
+                'bio': request.data.get('bio', ''),
+                'address': request.data.get('address', '')
+            }
+
+            # Add image if it exists in request
+            if 'image' in request.FILES:
+                doctor_data['image'] = request.FILES['image']
+
+            # Combine data for serializer
+            data = {
+                **doctor_data
+            }
+            if user_data:
+                data['user'] = user_data
+
+            print("Data being sent to serializer:", data)  # Debug print
+
+            serializer = self.get_serializer(instance, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+
+            # Refresh from database to ensure we have latest data
+            instance.refresh_from_db()
+            instance.user.refresh_from_db()
+
+            return Response(serializer.data)
+        except Exception as e:
+            print("Error in update:", str(e))  # Debug print
+            return Response(
+                {'detail': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+class DoctorDashboardStats(APIView):
+    permission_classes = [IsDoctor]
+    
+    def get(self, request):
+        doctor = request.user.doctor
+        today = date.today()
+        
+        upcoming_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            date__gte=today
+        ).count()
+        
+        todays_appointments = Appointment.objects.filter(
+            doctor=doctor,
+            date=today
+        ).count()
+        
+        total_patients = User.objects.filter(
+            role='patient',
+            appointments__doctor=doctor
+        ).distinct().count()
+        
+        return Response({
+            "doctor": {
+                "name": f"Dr. {request.user.first_name} {request.user.last_name}".strip() or f"Dr. {request.user.username}",
+                "title": request.user.specialization or "Doctor"
+            },
+            "stats": [
+                {
+                    "id": 1,
+                    "title": "Upcoming Appointments",
+                    "value": upcoming_appointments,
+                    "action": "View Schedule",
+                    "theme": "appointments",
+                    "path": "/doctor/appointments"
+                },
+                {
+                    "id": 2,
+                    "title": "Total Patients",
+                    "value": total_patients,
+                    "action": "View Patients",
+                    "theme": "patients",
+                    "path": "/doctor/patients"
+                },
+                {
+                    "id": 3,
+                    "title": "Today's Appointments",
+                    "value": todays_appointments,
+                    "action": "View Today",
+                    "theme": "today",
+                    "path": "/doctor/schedule"
+                }
+            ]
+        })
+
+
+# New view to handle doctor's patients
+class DoctorPatientsListView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer  # We'll reuse the appointment serializer 
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         try:
             doctor = self.request.user.doctor
-            return Appointment.objects.filter(doctor=doctor)
+            # Get unique patients from appointments
+            return Appointment.objects.filter(doctor=doctor).select_related('patient').distinct('patient')
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile found for this user.")
-
-class AppointmentCreateView(generics.CreateAPIView):
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
-
-
-
-class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
-    queryset = Doctor.objects.all()
-    serializer_class = DoctorRegisterSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            raise NotAuthenticated("You must be logged in.")
-        try:
-            return user.doctor
-        except Doctor.DoesNotExist:
-            raise NotAuthenticated("No doctor profile linked to this user.")
-
-class DoctorListView(generics.ListAPIView):
-    queryset = Doctor.objects.all()
-    serializer_class = DoctorSerializer
-    filterset_fields = ['specialization']
-    search_fields = ['user__username', 'specialization']
-
-class DoctorDetailView(generics.RetrieveAPIView):
-    queryset = Doctor.objects.all()
-    serializer_class = DoctorSerializer
-
-class DoctorAppointmentsView(generics.ListAPIView):
-    serializer_class = AppointmentSerializer
-    def get_queryset(self):
-        doctor_id = self.kwargs['doctor_id']
-        return Appointment.objects.filter(doctor_id=doctor_id)
-
-class PatientAppointmentsView(generics.ListAPIView):
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    def get_queryset(self):
-        return Appointment.objects.filter(patient_name=self.request.user.username)
-
-class AppointmentCancelView(generics.DestroyAPIView):
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-class AppointmentRescheduleView(generics.UpdateAPIView):
-    queryset = Appointment.objects.all()
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]

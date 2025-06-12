@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box, Typography, FormGroup, FormControlLabel, Checkbox,
-  TextField, Button, Grid, Paper, Divider, Chip, Stack,
+  Box, Typography, FormGroup, FormControlLabel, Checkbox, TextField, Button, Grid, Paper, Divider, Chip, Stack,
   Modal, Backdrop, Fade
 } from "@mui/material";
-import axios from "axios";
+import axiosInstance from "../../api/axios";
 import {
   Schedule, CheckCircle, AccessTime, 
   Alarm, CalendarToday, WatchLater
@@ -18,52 +17,26 @@ const DoctorAvailability = () => {
   const [availability, setAvailability] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   // Update the base URL to match your Django backend
   const API_BASE_URL = "http://localhost:8000/api";
 
   // Add axios interceptor for authentication
   useEffect(() => {
-    // Add a request interceptor
-    const interceptor = axios.interceptors.request.use(
-      (config) => {
-        // Get the token from localStorage
-        const token = localStorage.getItem('token');
-        if (token) {
-          // Add token to headers
-          config.headers.Authorization = `Bearer ${token}`;
-        } else {
-          console.warn('No authentication token found');
-        }
-        return config;
-      },
-      (error) => {
-        return Promise.reject(error);
-      }
-    );
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      setError("Please log in to access this feature");
+      setLoading(false);
+      return;
+    }
 
-    // Clean up interceptor on component unmount
-    return () => {
-      axios.interceptors.request.eject(interceptor);
-    };
-  }, []);
-
-  useEffect(() => {
     // Fetch doctor's availability
     const fetchAvailability = async () => {
       try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          alert('Please login first');
-          return;
-        }
-
-        const response = await axios.get(`${API_BASE_URL}/availability/`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-
+        const response = await axiosInstance.get("/doctor/availability/");
+        console.log('Availability response:', response.data);
         setAvailability(response.data);
         const initDays = {};
         response.data.forEach(item => {
@@ -75,12 +48,9 @@ const DoctorAvailability = () => {
         setSelectedDays(initDays);
       } catch (error) {
         console.error("Error fetching availability:", error);
-        if (error.response?.status === 401 || error.response?.status === 403) {
-          alert("Please login to view availability");
-          // You might want to redirect to login page here
-        } else {
-          alert("Error loading availability. Please try again later.");
-        }
+        setError(error.response?.data?.error || "Failed to fetch availability");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -111,37 +81,75 @@ const DoctorAvailability = () => {
 
   const handleSave = async () => {
     setIsSaving(true);
+    setError("");
     try {
+      console.log("Starting availability save...");
+      console.log("Selected days:", selectedDays);
+
+      // Delete existing availability
+      console.log("Deleting existing availability...");
+      await axiosInstance.delete("/doctor/availability/");
+
       // Create availability entries for each selected day
+      console.log("Creating new availability entries...");
       const availabilityPromises = Object.entries(selectedDays).map(([day, times]) => {
-        return axios.post(`${API_BASE_URL}/availability/`, {
+        const data = {
           day: day,
           start_time: times.start,
           end_time: times.end
-        });
+        };
+        console.log("Posting availability for", day, ":", data);
+        return axiosInstance.post("/doctor/availability/", data);
       });
 
-      await Promise.all(availabilityPromises);
+      const results = await Promise.all(availabilityPromises);
+      console.log("Save results:", results);
       
       // Fetch updated availability
-      const response = await axios.get(`${API_BASE_URL}/availability/`);
+      console.log("Fetching updated availability...");
+      const response = await axiosInstance.get("/doctor/availability/");
+      console.log("Updated availability:", response.data);
       setAvailability(response.data);
-      setIsSaving(false);
       setOpenSuccessModal(true);
     } catch (error) {
       console.error("Error saving availability:", error);
-      setIsSaving(false);
-      if (error.response?.status === 401) {
-        alert("Please login to save availability");
-      } else {
-        alert("Error saving availability. Please try again later.");
+      console.error("Error response:", error.response);
+      console.error("Error message:", error.message);
+      
+      let errorMessage = "Failed to save availability";
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (error.message) {
+        errorMessage = error.message;
       }
+      
+      if (error.response?.status === 401) {
+        errorMessage = "Your session has expired. Please login again.";
+      } else if (error.response?.status === 404) {
+        errorMessage = "Doctor profile not found. Please complete your profile setup.";
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
   };
 
   const handleCloseSuccessModal = () => {
     setOpenSuccessModal(false);
   };
+
+  // Component JSX
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div className="alert alert-danger">{error}</div>;
+  }
 
   return (
     <Box sx={styles.mainContainer}>
@@ -270,7 +278,7 @@ const DoctorAvailability = () => {
             <WatchLater />
             Current Availability
           </Typography>
-          <Stack direction="row" spacing={2}>
+          <Stack direction="row" spacing={2} flexWrap="wrap">
             {availability.map(item => (
               <Chip
                 key={item.day}

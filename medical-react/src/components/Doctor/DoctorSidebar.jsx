@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Drawer,
   List,
@@ -19,15 +19,23 @@ import {
   PeopleAlt as PatientsIcon
 } from "@mui/icons-material";
 import { styles, StyledListItem, WhiteLinkText } from "../doctorStyle/DoctorSidebar.styles";
+import { useAuth } from "../../hooks/useAuth";
 
 const DoctorSidebar = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/doctor/dashboard" },
     { text: "Availability", icon: <AvailabilityIcon />, path: "/doctor/availability" },
     { text: "Appointments", icon: <CalendarTodayIcon />, path: "/doctor/appointments" },
     { text: "Schedule", icon: <ScheduleIcon />, path: "/doctor/schedule" },
-    { text: "Patients", icon: <PatientsIcon />, path: "/doctor/patients" } ,
-
+    // { text: "Patients", icon: <PatientsIcon />, path: "/doctor/patients" },
     { text: "Profile", icon: <PersonIcon />, path: "/doctor/profile" }
   ];
 
@@ -39,15 +47,18 @@ const DoctorSidebar = () => {
     >
       <Box sx={styles.profileContainer}>
         <Avatar
-          alt="Doctor"
-          src="/doctor-avatar.jpg"
+          alt={user?.username || "Doctor"}
+          src={user?.image || "/doctor-avatar.jpg"}
           sx={styles.avatar}
         />
         <Typography variant="h6" sx={styles.doctorName}>
-          Dr. Rehab Ali
+          {user ? (user.first_name && user.last_name 
+            ? `Dr. ${user.first_name} ${user.last_name}`
+            : `Dr. ${user.username}`
+          ) : "Doctor"}
         </Typography>
         <Typography variant="caption" sx={styles.specialty}>
-          Cardiologist
+          {user?.specialization || "Doctor"}
         </Typography>
       </Box>
 
@@ -70,7 +81,6 @@ const DoctorSidebar = () => {
                 primaryTypographyProps={styles.listItemText}
               />
             </StyledListItem>
-            
           ))}
         </List>
       </Box>
@@ -79,15 +89,20 @@ const DoctorSidebar = () => {
         <Divider sx={styles.footerDivider} />
         <StyledListItem
           button
-          component={Link}
-          to="/logout"
+          onClick={handleLogout}
+          sx={{
+            '&:hover': {
+              backgroundColor: 'error.dark',
+            },
+            backgroundColor: 'error.main',
+          }}
         >
-          <ListItemIcon sx={styles.listIcon}>
+          <ListItemIcon sx={{ ...styles.listIcon, color: 'white' }}>
             <LogoutIcon />
           </ListItemIcon>
           <WhiteLinkText 
             primary="Logout" 
-            primaryTypographyProps={styles.listItemText}
+            primaryTypographyProps={{ ...styles.listItemText, color: 'white' }}
           />
         </StyledListItem>
       </Box>
