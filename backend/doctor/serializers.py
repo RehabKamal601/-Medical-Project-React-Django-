@@ -13,8 +13,8 @@ class DoctorSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password']
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ['id', 'username', 'email', 'first_name', 'last_name']
+        read_only_fields = ['id', 'username']  # Don't allow changing username
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
@@ -34,11 +34,28 @@ class DoctorRegisterSerializer(serializers.ModelSerializer):
         doctor = Doctor.objects.create(user=user, **validated_data)
         return doctor
 
+    def update(self, instance, validated_data):
+        # Update User model
+        if 'user' in validated_data:
+            user_data = validated_data.pop('user')
+            user = instance.user
+            for attr, value in user_data.items():
+                setattr(user, attr, value)
+            user.save()
+
+        # Update Doctor model
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        
+        return instance
+
 
 class DoctorAvailabilitySerializer(serializers.ModelSerializer):
     class Meta:
         model = DoctorAvailability
-        fields = '__all__'
+        fields = ['id', 'doctor', 'day', 'start_time', 'end_time']
+        read_only_fields = ['id']
 
 
 class AppointmentSerializer(serializers.ModelSerializer):

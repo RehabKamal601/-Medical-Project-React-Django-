@@ -9,23 +9,101 @@ import {
   Person, Email, Phone, MedicalServices,
   Description, CheckCircle, Home
 } from "@mui/icons-material";
-import { styles } from "../doctorStyle/DoctorProfile.styles";
+const styles = {
+  container: {
+    p: 3,
+    maxWidth: 800,
+    mx: 'auto'
+  },
+  title: {
+    color: 'primary.main',
+    mb: 4,
+    fontWeight: 600
+  },
+  paper: {
+    p: 4,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1
+  },
+  avatarContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    mb: 3
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    boxShadow: 2,
+    transition: 'all 0.2s ease-in-out',
+    '&:hover': {
+      transform: 'scale(1.05)'
+    }
+  },
+  textField: {
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: 'primary.main'
+    }
+  },
+  bioField: {
+    mt: 2,
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: 'primary.main'
+    }
+  },
+  divider: {
+    my: 3
+  },
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    mt: 2
+  },
+  saveButton: {
+    minWidth: 150,
+    fontWeight: 600
+  },
+  modalContent: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: 400,
+    bgcolor: 'background.paper',
+    boxShadow: 24,
+    p: 4,
+    borderRadius: 2,
+    textAlign: 'center'
+  },
+  successIcon: {
+    fontSize: 60,
+    color: 'success.main',
+    mb: 2
+  },
+  modalButton: {
+    minWidth: 120
+  }
+};
 
 const DoctorProfile = () => {
   const [profile, setProfile] = useState({
     user: {
       username: "",
       email: "",
-      password: ""  // This will be empty and won't be updated
+      first_name: "",
+      last_name: ""
     },
     specialization: "",
     phone: "",
     bio: "",
     image: null,
-    address: ""
+    address: "",
+    imagePreview: null // For showing image preview before upload
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
 
   useEffect(() => {
@@ -33,11 +111,26 @@ const DoctorProfile = () => {
       try {
         const response = await axiosInstance.get('/doctor/profile/update/');
         console.log('Profile data:', response.data);
-        setProfile(response.data);
+        
+        // If there's an image URL in the response, set the preview
+        const imageUrl = response.data.image;
+        setProfile(prev => ({
+          ...response.data,
+          imagePreview: imageUrl // Use the image URL from backend as preview
+        }));
+        
         setError(null);
       } catch (err) {
         console.error('Error fetching profile:', err);
-        setError('Failed to load profile data. Please try again later.');
+        let errorMsg = 'Failed to load profile data. Please try again later.';
+        
+        if (err.response?.status === 401) {
+          errorMsg = 'Please log in again to continue.';
+        } else if (err.response?.status === 404) {
+          errorMsg = 'Doctor profile not found. Please complete your registration.';
+        }
+        
+        setError(errorMsg);
       } finally {
         setLoading(false);
       }
@@ -47,7 +140,36 @@ const DoctorProfile = () => {
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, files } = e.target;
+    
+    if (files && files[0]) {
+      // Handle image upload
+      const file = files[0];
+      // Check file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setFieldErrors(prev => ({
+          ...prev,
+          image: 'Image size must be less than 5MB'
+        }));
+        return;
+      }
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setFieldErrors(prev => ({
+          ...prev,
+          image: 'Please upload an image file'
+        }));
+        return;
+      }
+      setProfile(prev => ({
+        ...prev,
+        image: file,
+        imagePreview: URL.createObjectURL(file)
+      }));
+      setFieldErrors(prev => ({ ...prev, image: null }));
+      return;
+    }
+
     if (name.includes('.')) {
       // Handle nested objects (e.g., user.email)
       const [parent, child] = name.split('.');
@@ -64,25 +186,118 @@ const DoctorProfile = () => {
   };
 
   const handleSave = async () => {
+    // Validate form before submitting
+    if (!validateForm()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+
     try {
-      // Create a copy of the profile data without the password field
-      const dataToSend = {
-        ...profile,
-        user: {
-          ...profile.user,
-          password: undefined // Remove password from the request
-        }
+      const formData = new FormData();
+
+      // Add user data
+      const userData = {
+        first_name: profile.user.first_name?.trim(),
+        last_name: profile.user.last_name?.trim(),
+        email: profile.user.email?.trim()
       };
-      
-      const response = await axiosInstance.put('/doctor/profile/update/', dataToSend);
+
+      // Add user fields to formData
+      Object.entries(userData).forEach(([key, value]) => {
+        if (value) {
+          formData.append(`user.${key}`, value);
+        }
+      });
+
+      // Add profile data
+      const profileFields = ['specialization', 'phone', 'bio', 'address'];
+      profileFields.forEach(key => {
+        const value = profile[key]?.trim();
+        if (value) {
+          formData.append(key, value);
+        }
+      });
+
+      // Add image if it's a File object
+      if (profile.image instanceof File) {
+        formData.append('image', profile.image);
+      }
+
+      // Log the FormData contents for debugging
+      console.log('Form data contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(key, ':', value);
+      }
+
+      const response = await axiosInstance.put('/doctor/profile/update/', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
       console.log('Profile updated:', response.data);
-      setProfile(response.data);
+      
+      // Update profile with response data
+      setProfile(prev => ({
+        ...response.data,
+        imagePreview: prev.imagePreview // Keep the preview
+      }));
+      
       setOpenSuccessModal(true);
       setError(null);
     } catch (err) {
       console.error('Error updating profile:', err);
-      setError(err.response?.data?.detail || 'Failed to update profile. Please try again.');
+      let errorMsg = 'Failed to update profile. Please try again.';
+      const newFieldErrors = {};
+      
+      if (err.response?.data) {
+        const errors = err.response.data;
+        if (typeof errors === 'object') {
+          // Handle field-specific errors
+          Object.entries(errors).forEach(([key, value]) => {
+            // Handle nested user errors
+            if (key === 'user' && typeof value === 'object') {
+              Object.entries(value).forEach(([userKey, userValue]) => {
+                newFieldErrors[`user.${userKey}`] = Array.isArray(userValue) ? userValue[0] : userValue;
+              });
+            } else {
+              newFieldErrors[key] = Array.isArray(value) ? value[0] : value;
+            }
+          });
+          
+          errorMsg = 'Please correct the errors below';
+        } else if (errors.detail) {
+          errorMsg = errors.detail;
+        }
+      }
+      
+      setFieldErrors(newFieldErrors);
+      setError(errorMsg);
     }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    // Validate required fields
+    if (!profile.user.first_name?.trim()) {
+      newErrors['user.first_name'] = 'First name is required';
+    }
+    if (!profile.user.last_name?.trim()) {
+      newErrors['user.last_name'] = 'Last name is required';
+    }
+    if (!profile.user.email?.trim()) {
+      newErrors['user.email'] = 'Email is required';
+    }
+    if (!profile.specialization?.trim()) {
+      newErrors['specialization'] = 'Specialty is required';
+    }
+    if (!profile.phone?.trim()) {
+      newErrors['phone'] = 'Phone number is required';
+    }
+
+    setFieldErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleCloseSuccessModal = () => {
@@ -91,6 +306,7 @@ const DoctorProfile = () => {
 
   const handleCloseError = () => {
     setError(null);
+    setFieldErrors({});
   };
 
   if (loading) {
@@ -150,10 +366,46 @@ const DoctorProfile = () => {
       
       <Paper elevation={3} sx={styles.paper}>
         <Box sx={styles.avatarContainer}>
-          <Avatar
-            src={profile.image || "/doctor-avatar.jpg"}
-            sx={styles.avatar}
+          <input
+            accept="image/*"
+            type="file"
+            id="profile-image-upload"
+            onChange={handleChange}
+            style={{ display: 'none' }}
+            name="image"
           />
+          <label htmlFor="profile-image-upload">
+            <Avatar
+              src={profile.imagePreview || profile.image || "/doctor-avatar.jpg"}
+              sx={{
+                ...styles.avatar,
+                cursor: 'pointer',
+                '&:hover': {
+                  opacity: 0.8,
+                  filter: 'brightness(0.9)'
+                }
+              }}
+            />
+          </label>
+          <Box sx={{ mt: 1, textAlign: 'center' }}>
+            <Button
+              component="span"
+              variant="outlined"
+              size="small"
+              sx={{
+                mt: 1,
+                fontSize: '0.8rem',
+                textTransform: 'none'
+              }}
+            >
+              Change Photo
+            </Button>
+            {fieldErrors['image'] && (
+              <Typography color="error" variant="caption" sx={{ mt: 0.5, display: 'block' }}>
+                {fieldErrors['image']}
+              </Typography>
+            )}
+          </Box>
         </Box>
         
         <TextField
@@ -173,6 +425,45 @@ const DoctorProfile = () => {
           sx={styles.textField}
         />
         
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <TextField
+            fullWidth
+            label="First Name"
+            name="user.first_name"
+            value={profile.user.first_name}
+            onChange={handleChange}
+            margin="normal"
+            error={!!fieldErrors['user.first_name']}
+            helperText={fieldErrors['user.first_name']}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Person color="primary" />
+                </InputAdornment>
+              ),
+            }}
+            sx={styles.textField}
+          />
+          <TextField
+            fullWidth
+            label="Last Name"
+            name="user.last_name"
+            value={profile.user.last_name}
+            onChange={handleChange}
+            margin="normal"
+            error={!!fieldErrors['user.last_name']}
+            helperText={fieldErrors['user.last_name']}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Person color="primary" />
+                </InputAdornment>
+              ),
+            }}
+            sx={styles.textField}
+          />
+        </Box>
+
         <TextField
           fullWidth
           label="Email"
@@ -180,6 +471,8 @@ const DoctorProfile = () => {
           value={profile.user.email}
           onChange={handleChange}
           margin="normal"
+          error={!!fieldErrors['user.email']}
+          helperText={fieldErrors['user.email']}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -197,6 +490,8 @@ const DoctorProfile = () => {
           value={profile.phone}
           onChange={handleChange}
           margin="normal"
+          error={!!fieldErrors['phone']}
+          helperText={fieldErrors['phone']}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -214,6 +509,8 @@ const DoctorProfile = () => {
           value={profile.specialization}
           onChange={handleChange}
           margin="normal"
+          error={!!fieldErrors['specialization']}
+          helperText={fieldErrors['specialization']}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -231,6 +528,8 @@ const DoctorProfile = () => {
           value={profile.address}
           onChange={handleChange}
           margin="normal"
+          error={!!fieldErrors['address']}
+          helperText={fieldErrors['address']}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -250,6 +549,8 @@ const DoctorProfile = () => {
           margin="normal"
           multiline
           rows={4}
+          error={!!fieldErrors['bio']}
+          helperText={fieldErrors['bio'] || 'Tell us about your medical experience and expertise'}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">

@@ -95,3 +95,6 @@ production_settings.py
 # Logs
 logs/
 *.log 
+
+__pycache__/
+*.pyc

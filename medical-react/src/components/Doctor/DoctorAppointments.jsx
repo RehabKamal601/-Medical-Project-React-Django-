@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   Typography, Paper, Box, Button, TextField, Grid,
   Chip, Avatar, Divider, IconButton, Stack, Tabs, Tab, MenuItem,
-  Select, InputLabel, FormControl, Pagination
+  Select, InputLabel, FormControl, Pagination, Alert, Snackbar
 } from "@mui/material";
 import axiosInstance from "../../api/axios";
 import {
@@ -17,6 +17,8 @@ import { styles } from "../doctorStyle/DoctorAppointments.styles";
 
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [editingNotes, setEditingNotes] = useState(null);
   const [tempNotes, setTempNotes] = useState("");
   const [tab, setTab] = useState(0);
@@ -25,50 +27,87 @@ const DoctorAppointments = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 4;
+  const [openSuccessModal, setOpenSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const daysOfWeek = [
     "Sunday", "Monday", "Tuesday", "Wednesday", 
     "Thursday", "Friday", "Saturday"
   ];
 
-  // useEffect(() => {
-  //   axios.get("http://localhost:8000/appointments/").then(res => {
-  //     setAppointments(res.data);
-  //   });
-  // }, []);
   useEffect(() => {
-  const fetchAppointments = async () => {
+    const fetchAppointments = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        console.log("Fetching appointments...");
+        const response = await axiosInstance.get("/doctor/appointments/");
+        console.log("Appointments response:", response.data);
+        setAppointments(response.data);
+      } catch (error) {
+        console.error("Error fetching appointments:", error);
+        console.error("Error response:", error.response);
+        
+        let errorMessage = "Failed to fetch appointments";
+        if (error.response?.data?.error) {
+          errorMessage = error.response.data.error;
+        } else if (error.response?.data?.detail) {
+          errorMessage = error.response.data.detail;
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
+        if (error.response?.status === 401) {
+          errorMessage = "Your session has expired. Please login again.";
+        } else if (error.response?.status === 404) {
+          errorMessage = "Doctor profile not found. Please complete your profile setup.";
+        }
+        
+        setError(errorMessage);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchAppointments();
+  }, []);
+
+  const handleStatusChange = async (id, status) => {
     try {
-      const response = await axiosInstance.get("/doctor/appointments/");
-      setAppointments(response.data);
+      console.log(`Updating appointment ${id} status to ${status}...`);
+      await axiosInstance.patch(`/doctor/appointments/${id}/`, { status });
+      
+      setAppointments(prev =>
+        prev.map(appt =>
+          appt.id === id ? { ...appt, status } : appt
+        )
+      );
+      
+      setSuccessMessage(`Appointment ${status} successfully`);
+      setOpenSuccessModal(true);
     } catch (error) {
-      console.error("Axios Error:", error);
+      console.error("Error updating appointment status:", error);
+      setError(error.response?.data?.error || "Failed to update appointment status");
     }
   };
-  fetchAppointments();
-}, []);
 
-
-  const handleStatusChange = (id, status) => {
-    axiosInstance.patch(`/doctor/appointments/${id}`, { status })
-      .then(() => {
-        setAppointments(prev =>
-          prev.map(appt =>
-            appt.id === id ? { ...appt, status } : appt
-          )
-        );
-      });
-  };
-
-  const handleNoteChange = (id, note) => {
-    axiosInstance.patch(`/doctor/appointments/${id}/`, { notes: note })
-      .then(() => {
-        setAppointments(prev =>
-          prev.map(appt =>
-            appt.id === id ? { ...appt, notes: note } : appt
-          )
-        );
-      });
+  const handleNoteChange = async (id, note) => {
+    try {
+      console.log(`Updating appointment ${id} notes...`);
+      await axiosInstance.patch(`/doctor/appointments/${id}/`, { notes: note });
+      
+      setAppointments(prev =>
+        prev.map(appt =>
+          appt.id === id ? { ...appt, notes: note } : appt
+        )
+      );
+      
+      setSuccessMessage("Notes updated successfully");
+      setOpenSuccessModal(true);
+    } catch (error) {
+      console.error("Error updating appointment notes:", error);
+      setError(error.response?.data?.error || "Failed to update notes");
+    }
   };
 
   const startEditing = (appt) => {
@@ -445,6 +484,30 @@ const DoctorAppointments = () => {
       {tab === 1 && renderAppointments(acceptedAppointments)}
       {tab === 2 && renderAppointments(rejectedAppointments)}
       {tab === 3 && renderAppointments(pastAppointments)}
+
+      {/* Success Snackbar */}
+      <Snackbar
+        open={openSuccessModal}
+        autoHideDuration={6000}
+        onClose={() => setOpenSuccessModal(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setOpenSuccessModal(false)} severity="success" sx={{ width: "100%" }}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Error Snackbar */}
+      <Snackbar
+        open={Boolean(error)}
+        autoHideDuration={6000}
+        onClose={() => setError("")}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setError("")} severity="error" sx={{ width: "100%" }}>
+          {error}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

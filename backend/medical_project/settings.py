@@ -74,6 +74,10 @@ DATABASES = {
     }
 }
 
+# File Upload Settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB max-size
+FILE_UPLOAD_PERMISSIONS = 0o644
+
 # Custom user model
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
