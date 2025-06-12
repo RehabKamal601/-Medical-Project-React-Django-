@@ -41,7 +41,7 @@ env/
 .DS_Store
 
 # Django migrations
-**/migrations/*.py
+# **/migrations/*.py  # Commented out to track migrations
 !**/migrations/__init__.py
 
 # Database

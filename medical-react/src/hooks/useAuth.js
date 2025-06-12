@@ -150,6 +150,17 @@ export const AuthProvider = ({ children }) => {
     loginUser,
     logout,
     registerUser,
+    updateUserData: (userData) => {
+      // Update the user state and localStorage
+      const updatedUser = {
+        ...user,
+        ...userData,
+        access: user.access,
+        refresh: user.refresh
+      };
+      setUser(updatedUser);
+      localStorage.setItem('user_data', JSON.stringify(updatedUser));
+    }
   };
 
   return (

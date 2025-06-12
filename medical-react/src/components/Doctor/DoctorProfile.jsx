@@ -5,10 +5,12 @@ import {
   Alert, Snackbar, CircularProgress
 } from "@mui/material";
 import axiosInstance from "../../api/axios";
+import { useAuth } from "../../hooks/useAuth";
 import {
   Person, Email, Phone, MedicalServices,
   Description, CheckCircle, Home
 } from "@mui/icons-material";
+
 const styles = {
   container: {
     p: 3,
@@ -87,6 +89,7 @@ const styles = {
 };
 
 const DoctorProfile = () => {
+  const { user: authUser, updateUserData } = useAuth();
   const [profile, setProfile] = useState({
     user: {
       username: "",
@@ -195,38 +198,31 @@ const DoctorProfile = () => {
     try {
       const formData = new FormData();
 
-      // Add user data
+      // Add user data as a single JSON string
       const userData = {
-        first_name: profile.user.first_name?.trim(),
-        last_name: profile.user.last_name?.trim(),
-        email: profile.user.email?.trim()
+        first_name: profile.user.first_name?.trim() || '',
+        last_name: profile.user.last_name?.trim() || '',
+        email: profile.user.email?.trim() || '',
+        username: profile.user.username?.trim() || ''
       };
 
-      // Add user fields to formData
-      Object.entries(userData).forEach(([key, value]) => {
-        if (value) {
-          formData.append(`user.${key}`, value);
-        }
-      });
+      formData.append('user', JSON.stringify(userData));
 
       // Add profile data
       const profileFields = ['specialization', 'phone', 'bio', 'address'];
       profileFields.forEach(key => {
-        const value = profile[key]?.trim();
-        if (value) {
-          formData.append(key, value);
-        }
+        const value = profile[key]?.trim() || '';
+        formData.append(key, value);
       });
 
       // Add image if it's a File object
       if (profile.image instanceof File) {
-        formData.append('image', profile.image);
-      }
-
-      // Log the FormData contents for debugging
-      console.log('Form data contents:');
-      for (let [key, value] of formData.entries()) {
-        console.log(key, ':', value);
+        // Create a new file with a shorter name
+        const fileExtension = profile.image.name.split('.').pop();
+        const timestamp = new Date().getTime();
+        const newFileName = `doctor_image_${timestamp}.${fileExtension}`;
+        const renamedFile = new File([profile.image], newFileName, { type: profile.image.type });
+        formData.append('image', renamedFile);
       }
 
       const response = await axiosInstance.put('/doctor/profile/update/', formData, {
@@ -235,13 +231,29 @@ const DoctorProfile = () => {
         }
       });
 
-      console.log('Profile updated:', response.data);
-      
+      console.log("Server response:", response.data);
+
       // Update profile with response data
       setProfile(prev => ({
         ...response.data,
-        imagePreview: prev.imagePreview // Keep the preview
+        imagePreview: response.data.image // Use the new image URL from response
       }));
+
+      // Get the full image URL
+      const imageUrl = response.data.image;
+      
+      // Update the user context with new data including the image URL
+      const updatedUserData = {
+        ...userData,
+        specialization: response.data.specialization,
+        image: imageUrl,
+        doctor: {
+          ...response.data
+        }
+      };
+      
+      console.log("Updating user context with:", updatedUserData);
+      updateUserData(updatedUserData);
       
       setOpenSuccessModal(true);
       setError(null);
@@ -252,6 +264,7 @@ const DoctorProfile = () => {
       
       if (err.response?.data) {
         const errors = err.response.data;
+        console.log('Server error response:', errors);
         if (typeof errors === 'object') {
           // Handle field-specific errors
           Object.entries(errors).forEach(([key, value]) => {
@@ -339,20 +352,37 @@ const DoctorProfile = () => {
         BackdropProps={{
           timeout: 500,
         }}
+        aria-labelledby="success-modal-title"
+        aria-describedby="success-modal-description"
+        keepMounted={false}
       >
         <Fade in={openSuccessModal}>
-          <Box sx={styles.modalContent}>
+          <Box 
+            sx={styles.modalContent}
+            role="dialog"
+            aria-modal="true"
+          >
             <CheckCircle sx={styles.successIcon} />
-            <Typography variant="h5" component="h2" gutterBottom>
+            <Typography 
+              variant="h5" 
+              component="h2" 
+              gutterBottom
+              id="success-modal-title"
+            >
               Success
             </Typography>
-            <Typography variant="body1" sx={{ mb: 3 }}>
+            <Typography 
+              variant="body1" 
+              sx={{ mb: 3 }}
+              id="success-modal-description"
+            >
               You have successfully updated your profile.
             </Typography>
             <Button
               variant="contained"
               onClick={handleCloseSuccessModal}
               sx={styles.modalButton}
+              autoFocus
             >
               Continue
             </Button>
