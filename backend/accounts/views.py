@@ -15,23 +15,18 @@ User = get_user_model()
 class RegisterView(APIView):
     permission_classes = [AllowAny]
     def post(self, request):
-        username = request.data.get('username')
-        password = request.data.get('password')
-        email = request.data.get('email')
-        role = request.data.get('role', 'patient')
-
-        if not username or not password:
-            return Response({"detail": "اسم المستخدم وكلمة المرور مطلوبان."}, status=400)
-
-        if User.objects.filter(username=username).exists():
-            return Response({"detail": "اسم المستخدم موجود بالفعل."}, status=400)
-
-        user = User.objects.create_user(username=username, password=password, email=email, role=role)
+        serializer = RegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+            
+        user = serializer.save()
+            
         return Response({
             "id": user.id,
             "username": user.username,
             "email": user.email,
-            "role": user.role
+            "role": user.role,
+            "specialization": user.specialization if user.role == 'doctor' else None
         }, status=201)
 
 class LoginView(APIView):

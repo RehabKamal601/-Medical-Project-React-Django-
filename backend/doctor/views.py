@@ -34,6 +34,21 @@ class DoctorRegisterView(generics.CreateAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorRegisterSerializer
 
+    def create(self, request, *args, **kwargs):
+        print("Registration data:", request.data)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        doctor = serializer.save()
+        print(f"Created doctor: {doctor}, User: {doctor.user.username}")
+
+        return Response({
+            'id': doctor.id,
+            'user_id': doctor.user.id,
+            'username': doctor.user.username,
+            'specialization': doctor.specialization,
+            'message': 'Doctor registered successfully'
+        }, status=status.HTTP_201_CREATED)
+
 
 
 # class DoctorRegisterView(generics.CreateAPIView):
@@ -66,6 +81,114 @@ class DoctorRegisterView(generics.CreateAPIView):
 #         headers = self.get_success_headers(serializer.data)
 #         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)
 
+class DoctorAvailabilityCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_doctor(self, request):
+        try:
+            print("\n=== Doctor Profile Debug ===")
+            print(f"User ID: {request.user.id}")
+            print(f"Username: {request.user.username}")
+            print(f"Role: {request.user.role}")
+            print(f"Is authenticated: {request.user.is_authenticated}")
+            
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            
+            # Verify user exists
+            user = User.objects.get(id=request.user.id)
+            print(f"User found: {user}, Role: {user.role}")
+            
+            # Create doctor profile if it doesn't exist
+            doctor, created = Doctor.objects.get_or_create(
+                user=request.user,
+                defaults={
+                    'specialization': request.user.specialization or '',
+                    'phone': '',
+                    'bio': '',
+                    'address': ''
+                }
+            )
+            
+            if created:
+                print("Created new doctor profile")
+            else:
+                print("Found existing doctor profile")
+                
+            return doctor
+                
+        except Doctor.DoesNotExist as e:
+            print(f"Doctor profile not found for user: {request.user.username}")
+            print(f"Error: {str(e)}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return None
+
+    def get(self, request):
+        print("\n=== Get Availability Debug ===")
+        print("Authorization header:", request.headers.get('Authorization'))
+        
+        doctor = self.get_doctor(request)
+        if not doctor:
+            return Response({
+                "error": "No doctor profile found for this user",
+                "user_id": request.user.id,
+                "username": request.user.username,
+                "is_authenticated": request.user.is_authenticated
+            }, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get all availability slots for this doctor    
+        availability = DoctorAvailability.objects.filter(doctor=doctor)
+        print(f"Found {availability.count()} availability slots")
+        
+        serializer = DoctorAvailabilitySerializer(availability, many=True)
+        return Response(serializer.data)
+
+    def post(self, request):
+        print("\n=== Create Availability Debug ===")
+        print("Request data:", request.data)
+        
+        doctor = self.get_doctor(request)
+        if not doctor:
+            return Response(
+                {"error": "No doctor profile found for this user"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Validate required fields
+        required_fields = ['day', 'start_time', 'end_time']
+        for field in required_fields:
+            if field not in request.data:
+                return Response(
+                    {"error": f"Missing required field: {field}"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        data = request.data.copy()
+        data['doctor'] = doctor.id
+        
+        print("Data to be saved:", data)
+        
+        serializer = DoctorAvailabilitySerializer(data=data)
+        if serializer.is_valid():
+            availability = serializer.save()
+            print(f"Created availability: {availability}")
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        print("Validation errors:", serializer.errors)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request):
+        doctor = self.get_doctor(request)
+        if not doctor:
+            return Response(
+                {"error": "No doctor profile found for this user"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+            
+        DoctorAvailability.objects.filter(doctor=doctor).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 class DoctorAvailabilityCreateView(generics.ListCreateAPIView):
     serializer_class = DoctorAvailabilitySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -121,6 +244,14 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = DoctorRegisterSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    # def get_object(self):
+    #     user = self.request.user
+    #     if not user.is_authenticated:
+    #         raise NotAuthenticated("You must be logged in.")
+    #     try:
+    #         return user.doctor
+    #     except Doctor.DoesNotExist:
+    #         raise NotAuthenticated("No doctor profile linked to this user.")
     def get_object(self):
         user = self.request.user
         if not user.is_authenticated:
@@ -128,7 +259,34 @@ class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
         try:
             return user.doctor
         except Doctor.DoesNotExist:
-            raise NotAuthenticated("No doctor profile linked to this user.")
+            # Create a new doctor profile if it doesn't exist
+            return Doctor.objects.create(user=user, specialization='', phone='', bio='', address='')
+
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+
+        # Handle nested user data from form-data
+        data = request.data.copy()
+        user_data = {}
+        
+        # Extract user fields from form data
+        user_fields = ['first_name', 'last_name', 'email']
+        for field in user_fields:
+            key = f'user.{field}'
+            if key in request.data:
+                user_data[field] = request.data[key]
+        
+        # Add extracted user data back to the request data
+        if user_data:
+            data['user'] = user_data
+
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+
+        return Response(serializer.data)
 
 class DoctorDashboardStats(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -195,3 +353,17 @@ class DoctorDashboardStats(APIView):
                 }
             ]
         })
+
+
+# New view to handle doctor's patients
+class DoctorPatientsListView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer  # We'll reuse the appointment serializer 
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        try:
+            doctor = self.request.user.doctor
+            # Get unique patients from appointments
+            return Appointment.objects.filter(doctor=doctor).select_related('patient').distinct('patient')
+        except Doctor.DoesNotExist:
+            raise NotAuthenticated("No doctor profile found for this user.")
