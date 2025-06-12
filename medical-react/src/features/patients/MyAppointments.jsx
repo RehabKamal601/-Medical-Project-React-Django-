@@ -21,6 +21,7 @@ import {
 } from "@mui/material";
 import { Delete, Edit, Visibility } from "@mui/icons-material";
 import axios from "axios";
+import { useAuth } from "../../hooks/useAuth";
 
 const statusColors = {
   Confirmed: "success",
@@ -40,14 +41,41 @@ const MyAppointments = () => {
   const [filterDate, setFilterDate] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 5;
+  const { user } = useAuth();
+  const [authError, setAuthError] = useState("");
+
+  // Robust token retrieval
+  const getToken = () => {
+    return (
+      (user && (user.access || user.token)) ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      null
+    );
+  };
 
   const fetchAppointments = async () => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await axios.get(
-        "http://localhost:5000/appointments?patientId=1"
+        "http://localhost:8000/api/doctor/patient/appointments/",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       setAppointments(res.data);
     } catch (err) {
+      if (err.response && err.response.status === 401) {
+        setAuthError("Session expired. Please log in again.");
+      } else {
+        setAuthError("Error fetching appointments. Please try again later.");
+      }
       console.error("Error fetching appointments", err);
     } finally {
       setLoading(false);
@@ -71,10 +99,23 @@ const MyAppointments = () => {
   }, [appointments, filterStatus, filterDate]);
 
   const handleDelete = async (id) => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
     try {
-      await axios.delete(`http://localhost:5000/appointments/${id}`);
+      await axios.delete(`http://localhost:8000/api/doctor/patient/appointments/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       fetchAppointments();
     } catch (err) {
+      if (err.response && err.response.status === 401) {
+        setAuthError("Session expired. Please log in again.");
+      } else {
+        setAuthError("Delete failed. Please try again later.");
+      }
       console.error("Delete failed", err);
     } finally {
       setConfirmDeleteId(null);
@@ -82,14 +123,28 @@ const MyAppointments = () => {
   };
 
   const handleUpdate = async () => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
     try {
       await axios.put(
-        `http://localhost:5000/appointments/${selected.id}`,
-        selected
+        `http://localhost:8000/api/doctor/patient/appointments/${selected.id}/`,
+        selected,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       fetchAppointments();
       setEditOpen(false);
     } catch (err) {
+      if (err.response && err.response.status === 401) {
+        setAuthError("Session expired. Please log in again.");
+      } else {
+        setAuthError("Update failed. Please try again later.");
+      }
       console.error("Update failed", err);
     }
   };
@@ -100,6 +155,7 @@ const MyAppointments = () => {
   );
 
   if (loading) return <CircularProgress sx={{ mt: 4 }} />;
+  if (authError) return <Typography color="error" sx={{ mt: 4 }}>{authError}</Typography>;
 
   return (
     <Box p={2}>

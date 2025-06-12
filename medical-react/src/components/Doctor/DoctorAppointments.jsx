@@ -12,7 +12,7 @@ import {
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { styles } from "../doctorStyle/DoctorAppointments.styles";
-// import Grid from '@mui/material/Unstable_Grid2';
+import { useAuth } from "../../hooks/useAuth";
 
 
 const DoctorAppointments = () => {
@@ -25,6 +25,8 @@ const DoctorAppointments = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 4;
+  const { user } = useAuth();
+  const [authError, setAuthError] = useState("");
 
   const daysOfWeek = [
     "Sunday", "Monday", "Tuesday", "Wednesday", 
@@ -37,37 +39,90 @@ const DoctorAppointments = () => {
   //   });
   // }, []);
   useEffect(() => {
-  const fetchAppointments = async () => {
-    try {
-      const response = await axios.get("http://localhost:8000/appointments/");
-      setAppointments(response.data);
-    } catch (error) {
-      console.error("Axios Error:", error);
-    }
-  };
-  fetchAppointments();
-}, []);
+    const fetchAppointments = async () => {
+      setAuthError("");
+      const token = getToken();
+      if (!token) {
+        setAuthError("You are not authenticated. Please log in again.");
+        return;
+      }
+      try {
+        const response = await axios.get("http://localhost:8000/api/doctor/appointments/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setAppointments(response.data);
+      } catch (error) {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Error fetching appointments. Please try again later.");
+        }
+        console.error("Axios Error:", error);
+      }
+    };
+    fetchAppointments();
+  }, []);
 
+  const getToken = () => {
+    return (
+      (user && (user.access || user.token)) ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      null
+    );
+  };
 
   const handleStatusChange = (id, status) => {
-    axios.patch(`http://localhost:8000/appointments/${id}`, { status })
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
+    axios.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { status }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>
             appt.id === id ? { ...appt, status } : appt
           )
         );
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Status update failed. Please try again later.");
+        }
+        console.error("Status update failed", error);
       });
   };
 
   const handleNoteChange = (id, note) => {
-    axios.patch(`http://localhost:8000/appointments/${id}/`, { notes: note })
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
+    axios.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { notes: note }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
       .then(() => {
         setAppointments(prev =>
           prev.map(appt =>
             appt.id === id ? { ...appt, notes: note } : appt
           )
         );
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Note update failed. Please try again later.");
+        }
+        console.error("Note update failed", error);
       });
   };
 
@@ -331,6 +386,8 @@ const DoctorAppointments = () => {
       </>
     );
   };
+
+  if (authError) return <Typography color="error" sx={{ mt: 4 }}>{authError}</Typography>;
 
   return (
     <Box sx={styles.mainBox}>
