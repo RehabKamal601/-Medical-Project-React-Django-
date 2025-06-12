@@ -18,12 +18,14 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import StarIcon from "@mui/icons-material/Star";
 import axios from "axios";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
 
 const FindDoctorsView = () => {
   const [doctors, setDoctors] = useState([]);
   const [filteredDoctors, setFilteredDoctors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
   const categories = [
     "General",
     "Lungs Specialist",
@@ -34,19 +36,43 @@ const FindDoctorsView = () => {
     "Cardiologist",
   ];
   const [selectedCategory, setSelectedCategory] = useState("");
+  const { user } = useAuth();
+
+  // Robust token retrieval
+  const getToken = () => {
+    return (
+      (user && (user.access || user.token)) ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      null
+    );
+  };
 
   useEffect(() => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      setLoading(false);
+      return;
+    }
     axios
-      .get("http://localhost:8000/api/doctor/doctors/")
+      .get("http://localhost:8000/api/doctor/doctors/", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
       .then((res) => {
-        console.log(res.data); // <-- check this
         setDoctors(res.data);
         setFilteredDoctors(res.data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching doctors:", err);
+        if (err.response && err.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Error fetching doctors. Please try again later.");
+        }
         setLoading(false);
+        console.error("Error fetching doctors:", err);
       });
   }, []);
 
@@ -67,6 +93,12 @@ const FindDoctorsView = () => {
     return (
       <Box p={3}>
         <CircularProgress />
+      </Box>
+    );
+  if (authError)
+    return (
+      <Box p={3}>
+        <Typography color="error">{authError}</Typography>
       </Box>
     );
 
