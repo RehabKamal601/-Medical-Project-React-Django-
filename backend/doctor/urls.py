@@ -5,6 +5,7 @@ from .views import (
     DoctorRegisterView, DoctorAvailabilityCreateView,
     AppointmentListView, AppointmentUpdateView, AppointmentCreateView,
     DoctorProfileUpdateView, DoctorDashboardStats, DoctorPatientsListView
+ , AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView
 )
 
 router = DefaultRouter()

@@ -20,6 +20,10 @@ const DoctorAvailability = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  // Update the base URL to match your Django backend
+  const API_BASE_URL = "http://localhost:8000/api";
+
+  // Add axios interceptor for authentication
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (!token) {
@@ -30,8 +34,6 @@ const DoctorAvailability = () => {
 
     // Fetch doctor's availability
     const fetchAvailability = async () => {
-      console.log('Fetching availability with token:', token);
-      
       try {
         const response = await axiosInstance.get("/doctor/availability/");
         console.log('Availability response:', response.data);
@@ -45,7 +47,7 @@ const DoctorAvailability = () => {
         });
         setSelectedDays(initDays);
       } catch (error) {
-        console.error("Error fetching availability:", error.response?.data || error.message);
+        console.error("Error fetching availability:", error);
         setError(error.response?.data?.error || "Failed to fetch availability");
       } finally {
         setLoading(false);
@@ -108,7 +110,6 @@ const DoctorAvailability = () => {
       const response = await axiosInstance.get("/doctor/availability/");
       console.log("Updated availability:", response.data);
       setAvailability(response.data);
-      setIsSaving(false);
       setOpenSuccessModal(true);
     } catch (error) {
       console.error("Error saving availability:", error);
@@ -132,6 +133,7 @@ const DoctorAvailability = () => {
       }
       
       setError(errorMessage);
+    } finally {
       setIsSaving(false);
     }
   };

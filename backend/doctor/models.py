@@ -5,21 +5,14 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 
 
+
 class Doctor(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE )
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='doctor')
     specialization = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     bio = models.TextField(blank=True)
     image = models.ImageField(upload_to='doctor_images/', blank=True, null=True)
     address = models.CharField(max_length=255, blank=True)
-
-    # user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='doctor_profile')
-    # specialization = models.CharField(max_length=100)
-    # phone = models.CharField(max_length=20)
-    # address = models.CharField(max_length=255, blank=True)
-    # bio = models.TextField(blank=True)
-    # image = models.ImageField(upload_to='doctor_images/', blank=True, null=True)
-
 
     def __str__(self):
         return f"Dr. {self.user.first_name} {self.user.last_name}"
@@ -81,4 +74,4 @@ class Appointment(models.Model):
     notes = models.TextField(blank=True)
 
     def __str__(self):
-        return f"{self.patient} - {self.date} - {self.status}"
+        return f"{self.patient.user.get_full_name()} - {self.date} - {self.status}"

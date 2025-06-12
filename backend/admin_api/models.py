@@ -14,6 +14,8 @@ class AdminDoctor(models.Model):
     phone = models.CharField(max_length=15)
     specialty = models.ForeignKey(AdminSpecialty, on_delete=models.SET_NULL, null=True)
     bio = models.TextField(blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name
@@ -25,6 +27,8 @@ class AdminPatient(models.Model):
     phone = models.CharField(max_length=15)
     date_of_birth = models.DateField(null=True, blank=True)
     address = models.TextField(blank=True, null=True)
+    is_approved = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name

@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pdb
+*.egg
+*.egg-info/
+*.log
+*.pot
+*.mo
+
+# Django specific
+db.sqlite3
+*.sqlite3
+*.log
+.env
+.env.local
+
+# venv
+venv/
+ENV/
+env/
+.venv/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Node (React Frontend)
+frontend/node_modules/
+frontend/.env
+frontend/.next/
+frontend/dist/
+frontend/build/
+
+# React build output (if created)
+build/
+
+# Coverage reports
+htmlcov/
+coverage.xml
+*.cover
+*.py,cover
+
+# Pytest
+.cache/
+
+# Migrations (optional if you want clean control)
+**/migrations/__pycache__/
+**/migrations/*.pyc

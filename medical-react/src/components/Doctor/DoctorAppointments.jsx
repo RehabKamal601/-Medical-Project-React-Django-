@@ -6,14 +6,20 @@ import {
 } from "@mui/material";
 import axiosInstance from "../../api/axios";
 import {
-  CheckCircle, Cancel, AccessTime, Edit,
-  CalendarToday, WatchLater, Notes,
-  Save, Close, FilterAlt
+  CheckCircle,
+  Cancel,
+  AccessTime,
+  Edit,
+  CalendarToday,
+  WatchLater,
+  Notes,
+  Save,
+  Close,
+  FilterAlt,
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { styles } from "../doctorStyle/DoctorAppointments.styles";
-// import Grid from '@mui/material/Unstable_Grid2';
-
+import { useAuth } from "../../hooks/useAuth";
 
 const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
@@ -27,87 +33,111 @@ const DoctorAppointments = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 4;
+  const { user } = useAuth();
+  const [authError, setAuthError] = useState("");
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
   const daysOfWeek = [
-    "Sunday", "Monday", "Tuesday", "Wednesday", 
-    "Thursday", "Friday", "Saturday"
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
   ];
 
   useEffect(() => {
     const fetchAppointments = async () => {
-      setLoading(true);
-      setError("");
+      setAuthError("");
+      const token = getToken();
+      if (!token) {
+        setAuthError("You are not authenticated. Please log in again.");
+        return;
+      }
       try {
-        console.log("Fetching appointments...");
-        const response = await axiosInstance.get("/doctor/appointments/");
-        console.log("Appointments response:", response.data);
+        const response = await axiosInstance.get("http://localhost:8000/api/doctor/appointments/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setAppointments(response.data);
       } catch (error) {
-        console.error("Error fetching appointments:", error);
-        console.error("Error response:", error.response);
-        
-        let errorMessage = "Failed to fetch appointments";
-        if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response?.data?.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.message) {
-          errorMessage = error.message;
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Error fetching appointments. Please try again later.");
         }
-        
-        if (error.response?.status === 401) {
-          errorMessage = "Your session has expired. Please login again.";
-        } else if (error.response?.status === 404) {
-          errorMessage = "Doctor profile not found. Please complete your profile setup.";
-        }
-        
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
+        console.error("Axios Error:", error);
       }
     };
-    
     fetchAppointments();
   }, []);
 
-  const handleStatusChange = async (id, status) => {
-    try {
-      console.log(`Updating appointment ${id} status to ${status}...`);
-      await axiosInstance.patch(`/doctor/appointments/${id}/`, { status });
-      
-      setAppointments(prev =>
-        prev.map(appt =>
-          appt.id === id ? { ...appt, status } : appt
-        )
-      );
-      
-      setSuccessMessage(`Appointment ${status} successfully`);
-      setOpenSuccessModal(true);
-    } catch (error) {
-      console.error("Error updating appointment status:", error);
-      setError(error.response?.data?.error || "Failed to update appointment status");
-    }
+  const getToken = () => {
+    return (
+      (user && (user.access || user.token)) ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      null
+    );
   };
 
-  const handleNoteChange = async (id, note) => {
-    try {
-      console.log(`Updating appointment ${id} notes...`);
-      await axiosInstance.patch(`/doctor/appointments/${id}/`, { notes: note });
-      
-      setAppointments(prev =>
-        prev.map(appt =>
-          appt.id === id ? { ...appt, notes: note } : appt
-        )
-      );
-      
-      setSuccessMessage("Notes updated successfully");
-      setOpenSuccessModal(true);
-    } catch (error) {
-      console.error("Error updating appointment notes:", error);
-      setError(error.response?.data?.error || "Failed to update notes");
+  const handleStatusChange = (id, status) => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
     }
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { status }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => {
+        setAppointments(prev =>
+          prev.map(appt =>
+            appt.id === id ? { ...appt, status } : appt
+          )
+        );
+        setSuccessMessage("Status updated successfully.");
+        setOpenSuccessModal(true);
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Status update failed. Please try again later.");
+        }
+        console.error("Status update failed", error);
+      });
+  };
+
+  const handleNoteChange = (id, note) => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { notes: note }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => {
+        setAppointments(prev =>
+          prev.map(appt =>
+            appt.id === id ? { ...appt, notes: note } : appt
+          )
+        );
+        setSuccessMessage("Notes updated successfully.");
+        setOpenSuccessModal(true);
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Note update failed. Please try again later.");
+        }
+        console.error("Note update failed", error);
+      });
   };
 
   const startEditing = (appt) => {
@@ -162,29 +192,32 @@ const DoctorAppointments = () => {
   const now = dayjs();
 
   const sortByDateDesc = (list) =>
-    [...list].sort((a, b) =>
-      dayjs(`${b.date} ${b.time}`).valueOf() - dayjs(`${a.date} ${a.time}`).valueOf()
+    [...list].sort(
+      (a, b) =>
+        dayjs(`${b.date} ${b.time}`).valueOf() -
+        dayjs(`${a.date} ${a.time}`).valueOf()
     );
 
   const filteredAppointments = (status, isPast = false) => {
     let filtered = appointments;
-    
+
     if (isPast) {
-      filtered = filtered.filter(appt =>
+      filtered = filtered.filter((appt) =>
         dayjs(`${appt.date} ${appt.time}`).isBefore(now)
       );
     } else if (status) {
-      filtered = filtered.filter(appt => appt.status === status);
+      filtered = filtered.filter((appt) => appt.status === status);
     }
-    
+
     return sortByDateDesc(
-      filtered.filter(appt => {
+      filtered.filter((appt) => {
         const appointmentDate = dayjs(`${appt.date} ${appt.time}`);
         const dayName = appointmentDate.format("dddd");
-        
+
         if (filterType === "all") return true;
         if (filterType === "day" && selectedDay) return dayName === selectedDay;
-        if (filterType === "date" && selectedDate) return appt.date === selectedDate;
+        if (filterType === "date" && selectedDate)
+          return appt.date === selectedDate;
         return false;
       })
     );
@@ -201,7 +234,7 @@ const DoctorAppointments = () => {
       (page - 1) * itemsPerPage,
       page * itemsPerPage
     );
-    
+
     return { data: paginatedData, totalPages };
   };
 
@@ -214,17 +247,23 @@ const DoctorAppointments = () => {
     <Grid item xs={12} sm={6} md={2} key={appt.id}>
       <Paper elevation={0} sx={styles.appointmentCard}>
         <Stack direction="row" spacing={1.5} alignItems="center" mb={1.5}>
-          <Avatar sx={{
-            ...styles.avatar,
-            bgcolor: appt.status === "approved" ? "#10b981" :
-                     appt.status === "rejected" ? "#ef4444" : "#f59e0b",
-          }} />
+          <Avatar
+            sx={{
+              ...styles.avatar,
+              bgcolor:
+                appt.status === "approved"
+                  ? "#10b981"
+                  : appt.status === "rejected"
+                  ? "#ef4444"
+                  : "#f59e0b",
+            }}
+          />
           <Box>
             <Typography variant="subtitle1" fontWeight={600} color="text.primary" fontSize="1rem">
-              {appt.patientName}
+              {appt.patient_name}
             </Typography>
             <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
-              ID: {appt.patientId}
+              ID: {appt.patient_id}
             </Typography>
           </Box>
         </Stack>
@@ -234,23 +273,37 @@ const DoctorAppointments = () => {
         <Box mb={1.5}>
           <Stack direction="row" spacing={0.5} alignItems="center" mb={1}>
             <CalendarToday sx={styles.statusIcon} />
-            <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              fontSize="0.9rem"
+            >
               {dayjs(appt.date).format("DD/MM/YYYY")}
             </Typography>
           </Stack>
           <Stack direction="row" spacing={0.5} alignItems="center" mb={1}>
             <WatchLater sx={styles.statusIcon} />
-            <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              fontSize="0.9rem"
+            >
               {appt.time}
             </Typography>
           </Stack>
-          <Box>
-            {getStatusChip(appt.status)}
-          </Box>
+          <Box>{getStatusChip(appt.status)}</Box>
         </Box>
 
         <Box mt="auto">
-          <Typography variant="subtitle2" fontWeight={600} color="text.primary" mb={1} display="flex" alignItems="center" fontSize="0.95rem">
+          <Typography
+            variant="subtitle2"
+            fontWeight={600}
+            color="text.primary"
+            mb={1}
+            display="flex"
+            alignItems="center"
+            fontSize="0.95rem"
+          >
             <Notes sx={{ mr: 0.5, ...styles.statusIcon }} />
             Notes
           </Typography>
@@ -289,7 +342,11 @@ const DoctorAppointments = () => {
             </Box>
           ) : (
             <Paper variant="outlined" sx={styles.notesPaper}>
-              <Typography variant="body2" color="text.secondary" sx={{ width: "100%", fontSize: "0.9rem" }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ width: "100%", fontSize: "0.9rem" }}
+              >
                 {appt.notes || "No notes added"}
               </Typography>
               <IconButton
@@ -333,17 +390,27 @@ const DoctorAppointments = () => {
 
   const renderAppointments = (data) => {
     const { data: paginatedData, totalPages } = paginate(data);
-    
+
     return (
       <>
         <Grid container spacing={2}>
-          {paginatedData.length ? paginatedData.map(renderAppointmentCard) : (
+          {paginatedData.length ? (
+            paginatedData.map(renderAppointmentCard)
+          ) : (
             <Grid item xs={12}>
               <Paper sx={styles.noAppointmentsPaper}>
-                <Typography variant="h6" color="text.secondary" fontSize="1.1rem">
+                <Typography
+                  variant="h6"
+                  color="text.secondary"
+                  fontSize="1.1rem"
+                >
                   No appointments found
                 </Typography>
-                <Typography variant="body2" color="text.disabled" sx={{ mt: 1, fontSize: "0.9rem" }}>
+                <Typography
+                  variant="body2"
+                  color="text.disabled"
+                  sx={{ mt: 1, fontSize: "0.9rem" }}
+                >
                   {tab === 0 && "No pending appointments available"}
                   {tab === 1 && "No accepted appointments available"}
                   {tab === 2 && "No rejected appointments available"}
@@ -353,7 +420,7 @@ const DoctorAppointments = () => {
             </Grid>
           )}
         </Grid>
-        
+
         {totalPages > 1 && (
           <Box sx={styles.paginationBox}>
             <Pagination
@@ -371,12 +438,19 @@ const DoctorAppointments = () => {
     );
   };
 
+  if (authError) return <Typography color="error" sx={{ mt: 4 }}>{authError}</Typography>;
+
   return (
     <Box sx={styles.mainBox}>
       <Box sx={styles.headerBox}>
         <CalendarToday sx={styles.calendarIcon} />
         <Box>
-          <Typography variant="h5" fontWeight={700} color="text.primary" fontSize="1.25rem">
+          <Typography
+            variant="h5"
+            fontWeight={700}
+            color="text.primary"
+            fontSize="1.25rem"
+          >
             Appointments Management
           </Typography>
           <Typography variant="body2" color="text.secondary" fontSize="0.9rem">
@@ -386,7 +460,13 @@ const DoctorAppointments = () => {
       </Box>
 
       <Paper sx={styles.filterPaper}>
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
           <FilterAlt sx={styles.filterIcon} />
           <FormControl size="small" sx={styles.formControl}>
             <InputLabel>Filter Type</InputLabel>
@@ -399,9 +479,15 @@ const DoctorAppointments = () => {
               label="Filter Type"
               sx={styles.selectStyle}
             >
-              <MenuItem value="all" sx={styles.menuItemStyle}>All Appointments</MenuItem>
-              <MenuItem value="day" sx={styles.menuItemStyle}>By Day of Week</MenuItem>
-              <MenuItem value="date" sx={styles.menuItemStyle}>By Specific Date</MenuItem>
+              <MenuItem value="all" sx={styles.menuItemStyle}>
+                All Appointments
+              </MenuItem>
+              <MenuItem value="day" sx={styles.menuItemStyle}>
+                By Day of Week
+              </MenuItem>
+              <MenuItem value="date" sx={styles.menuItemStyle}>
+                By Specific Date
+              </MenuItem>
             </Select>
           </FormControl>
 
@@ -417,8 +503,10 @@ const DoctorAppointments = () => {
                 label="Select Day"
                 sx={styles.selectStyle}
               >
-                {daysOfWeek.map(day => (
-                  <MenuItem key={day} value={day} sx={styles.menuItemStyle}>{day}</MenuItem>
+                {daysOfWeek.map((day) => (
+                  <MenuItem key={day} value={day} sx={styles.menuItemStyle}>
+                    {day}
+                  </MenuItem>
                 ))}
               </Select>
             </FormControl>
@@ -440,7 +528,7 @@ const DoctorAppointments = () => {
             />
           )}
 
-          {(filterType !== "all" && (selectedDay || selectedDate)) && (
+          {filterType !== "all" && (selectedDay || selectedDate) && (
             <Button
               variant="outlined"
               size="small"
@@ -511,5 +599,6 @@ const DoctorAppointments = () => {
     </Box>
   );
 };
+
 
 export default DoctorAppointments;

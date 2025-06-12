@@ -23,6 +23,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CustomPagination from "../../CustomPagination.jsx";
 
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
+
 const SpecialtiesList = () => {
   const [specialties, setSpecialties] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
@@ -51,12 +55,35 @@ const SpecialtiesList = () => {
 
   const fetchSpecialties = async () => {
     try {
-      const response = await fetch("http://localhost:5000/specialties");
-      setSpecialties(await response.json());
+      const token = getAuthToken();
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/admin/specialties/",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
+
+      if (!response.ok) throw new Error("Failed to load specialties");
+
+      const data = await response.json();
+      setSpecialties(data);
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to load specialties",
+        message: error.message || "Failed to load specialties",
         severity: "error",
       });
     }
@@ -96,16 +123,30 @@ const SpecialtiesList = () => {
     if (!validateForm()) return;
 
     try {
+      const token = getAuthToken();
       const url = editingSpecialty
-        ? `http://localhost:5000/specialties/${editingSpecialty.id}`
-        : "http://localhost:5000/specialties";
+        ? `http://127.0.0.1:8000/api/admin/specialties/${editingSpecialty.id}/`
+        : "http://127.0.0.1:8000/api/admin/specialties/";
       const method = editingSpecialty ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ name }),
       });
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
 
       if (!response.ok) throw new Error("Failed to save specialty");
 
@@ -128,10 +169,27 @@ const SpecialtiesList = () => {
 
   const handleConfirmDelete = async () => {
     try {
+      const token = getAuthToken();
       const response = await fetch(
-        `http://localhost:5000/specialties/${selectedSpecialty.id}`,
-        { method: "DELETE" }
+        `http://127.0.0.1:8000/api/admin/specialties/${selectedSpecialty.id}/`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
 
       if (!response.ok) throw new Error("Failed to delete");
 

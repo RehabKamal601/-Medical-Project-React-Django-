@@ -26,6 +26,10 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
+
 const DoctorsList = () => {
   const [doctors, setDoctors] = useState([]);
   const [specialties, setSpecialties] = useState([]);
@@ -43,7 +47,6 @@ const DoctorsList = () => {
     phone: "",
     specialtyId: "",
     bio: "",
-    image: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -53,7 +56,6 @@ const DoctorsList = () => {
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^[0-9]{10,15}$/.test(phone);
-  const validateImageUrl = (url) => /\.(jpeg|jpg|gif|png|svg)$/i.test(url);
 
   const validateForm = () => {
     const newErrors = {};
@@ -62,19 +64,38 @@ const DoctorsList = () => {
     if (!validatePhone(form.phone)) newErrors.phone = "Invalid phone number";
     if (!form.specialtyId) newErrors.specialtyId = "Specialty is required";
     if (!form.bio.trim()) newErrors.bio = "Bio is required";
-    if (!validateImageUrl(form.image)) newErrors.image = "Invalid image URL";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const fetchDoctors = async () => {
     try {
+      const token = getAuthToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       const [doctorsRes, specialtiesRes] = await Promise.all([
-        fetch("http://localhost:5000/doctors"),
-        fetch("http://localhost:5000/specialties"),
+        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/admin/specialties/", { headers }),
       ]);
-      setDoctors(await doctorsRes.json());
-      setSpecialties(await specialtiesRes.json());
+
+      if (doctorsRes.status === 401 || specialtiesRes.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/login");
+        return;
+      }
+
+      const doctorsData = await doctorsRes.json();
+      const specialtiesData = await specialtiesRes.json();
+
+      setDoctors(doctorsData);
+      setSpecialties(specialtiesData);
     } catch (error) {
       setSnackbar({
         open: true,
@@ -103,7 +124,6 @@ const DoctorsList = () => {
       phone: "",
       specialtyId: "",
       bio: "",
-      image: "",
     });
     setErrors({});
     setOpenDialog(true);
@@ -112,12 +132,11 @@ const DoctorsList = () => {
   const handleOpenEdit = (doctor) => {
     setEditingDoctor(doctor);
     setForm({
-      fullName: doctor.fullName,
+      fullName: doctor.name,
       email: doctor.email,
       phone: doctor.phone,
-      specialtyId: doctor.specialtyId,
+      specialtyId: doctor.specialty,
       bio: doctor.bio,
-      image: doctor.image,
     });
     setErrors({});
     setOpenDialog(true);
@@ -131,18 +150,43 @@ const DoctorsList = () => {
     if (!validateForm()) return;
 
     try {
+      const token = getAuthToken();
       const url = editingDoctor
-        ? `http://localhost:5000/doctors/${editingDoctor.id}`
-        : "http://localhost:5000/doctors";
+        ? `http://127.0.0.1:8000/api/admin/doctors/${editingDoctor.id}/`
+        : "http://127.0.0.1:8000/api/admin/doctors/";
       const method = editingDoctor ? "PUT" : "POST";
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const requestData = {
+        name: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        specialty: form.specialtyId,
+        bio: form.bio,
+      };
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        headers,
+        body: JSON.stringify(requestData),
       });
 
-      if (!response.ok) throw new Error("Failed to save doctor");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Failed to save doctor");
+      }
 
       fetchDoctors();
       setOpenDialog(false);
@@ -169,12 +213,32 @@ const DoctorsList = () => {
 
   const handleConfirmDelete = async () => {
     try {
+      const token = getAuthToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       const response = await fetch(
-        `http://localhost:5000/doctors/${doctorToDelete.id}`,
-        { method: "DELETE" }
+        `http://127.0.0.1:8000/api/admin/doctors/${doctorToDelete.id}/`,
+        {
+          method: "DELETE",
+          headers,
+        }
       );
 
-      if (!response.ok) throw new Error("Delete failed");
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Delete failed");
+      }
 
       fetchDoctors();
       setConfirmOpen(false);
@@ -195,6 +259,12 @@ const DoctorsList = () => {
 
   const handleCancelDelete = () => {
     setConfirmOpen(false);
+  };
+
+  const getSpecialtyName = (specialtyId) => {
+    if (!specialtyId) return "Without specialization";
+    const specialty = specialties.find((s) => s.id === specialtyId);
+    return specialty ? specialty.name : "Without specialization";
   };
 
   return (
@@ -226,11 +296,8 @@ const DoctorsList = () => {
           <TableBody>
             {currentDoctors.map((doctor) => (
               <TableRow key={doctor.id}>
-                <TableCell>{doctor.fullName}</TableCell>
-                <TableCell>
-                  {specialties.find((s) => s.id === doctor.specialtyId)?.name ||
-                    "N/A"}
-                </TableCell>
+                <TableCell>{doctor.name}</TableCell>
+                <TableCell>{getSpecialtyName(doctor.specialty)}</TableCell>
                 <TableCell>{doctor.email}</TableCell>
                 <TableCell>{doctor.phone}</TableCell>
                 <TableCell>
@@ -340,16 +407,6 @@ const DoctorsList = () => {
             rows={3}
             margin="normal"
           />
-          <TextField
-            label="Image URL *"
-            name="image"
-            value={form.image}
-            onChange={(e) => setForm({ ...form, image: e.target.value })}
-            error={!!errors.image}
-            helperText={errors.image || "Must be valid image URL"}
-            fullWidth
-            margin="normal"
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
@@ -362,7 +419,7 @@ const DoctorsList = () => {
       <Dialog open={confirmOpen} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {doctorToDelete?.fullName}?
+          Are you sure you want to delete {doctorToDelete?.name}?
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelDelete}>Cancel</Button>
