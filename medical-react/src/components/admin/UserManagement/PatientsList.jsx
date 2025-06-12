@@ -14,21 +14,24 @@ import {
   DialogContent,
   TextField,
   DialogActions,
-  MenuItem,
   Snackbar,
   Alert,
   IconButton,
   Tooltip,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CustomPagination from "../../CustomPagination.jsx";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { useAuth } from "../../../hooks/useAuth";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
 
 const PatientList = () => {
-  const { authToken } = useAuth();
   const [patients, setPatients] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingPatient, setEditingPatient] = useState(null);
@@ -39,16 +42,11 @@ const PatientList = () => {
   const patientsPerPage = 5;
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
+    name: "",
     email: "",
     phone: "",
+    date_of_birth: "",
     address: "",
-    age: "",
-    gender: "",
-    blood_type: "",
-    allergies: "",
-    medical_history: "",
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -58,34 +56,48 @@ const PatientList = () => {
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^[0-9]{10,15}$/.test(phone);
-  const validateAge = (age) => age > 0 && age <= 120;
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.first_name.trim()) newErrors.first_name = "First name is required";
-    if (!form.last_name.trim()) newErrors.last_name = "Last name is required";
+    if (!form.name.trim()) newErrors.name = "Name is required";
     if (!validateEmail(form.email)) newErrors.email = "Invalid email format";
     if (!validatePhone(form.phone)) newErrors.phone = "Invalid phone number";
+    if (!form.date_of_birth)
+      newErrors.date_of_birth = "Date of birth is required";
     if (!form.address.trim()) newErrors.address = "Address is required";
-    if (!validateAge(form.age)) newErrors.age = "Age must be 1-120";
-    if (!form.gender) newErrors.gender = "Gender is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/patients/", {
-        headers: {
-          "Authorization": `Bearer ${authToken}`,
-        },
-      });
+      const token = getAuthToken();
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/admin/patients/",
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/login");
+        return;
+      }
+
       const data = await response.json();
       setPatients(data);
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to load data",
+        message: "Failed to load patients",
         severity: "error",
       });
     }
@@ -93,7 +105,7 @@ const PatientList = () => {
 
   useEffect(() => {
     fetchPatients();
-  }, [authToken]);
+  }, []);
 
   const indexOfLastPatient = currentPage * patientsPerPage;
   const indexOfFirstPatient = indexOfLastPatient - patientsPerPage;
@@ -105,30 +117,77 @@ const PatientList = () => {
 
   const handlePageChange = (page) => setCurrentPage(page);
 
+  const handleOpenAdd = () => {
+    setEditingPatient(null);
+    setForm({
+      name: "",
+      email: "",
+      phone: "",
+      date_of_birth: "",
+      address: "",
+    });
+    setErrors({});
+    setOpenDialog(true);
+  };
+
+  const handleOpenEdit = (patient) => {
+    setEditingPatient(patient);
+    setForm({
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+      date_of_birth: patient.date_of_birth,
+      address: patient.address,
+    });
+    setErrors({});
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+  };
+
   const handleSave = async () => {
     if (!validateForm()) return;
+
     try {
+      const token = getAuthToken();
       const url = editingPatient
-        ? `http://localhost:8000/api/patients/${editingPatient.id}/update/`
-        : "http://localhost:8000/api/patients/create/";
+        ? `http://127.0.0.1:8000/api/admin/patients/${editingPatient.id}/`
+        : "http://127.0.0.1:8000/api/admin/patients/";
       const method = editingPatient ? "PUT" : "POST";
-      
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       const response = await fetch(url, {
         method,
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
-        },
+        headers,
         body: JSON.stringify(form),
       });
-      
-      if (!response.ok) throw new Error("Failed to save");
-      
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Failed to save patient");
+      }
+
       fetchPatients();
       setOpenDialog(false);
       setSnackbar({
         open: true,
-        message: `Patient ${editingPatient ? "updated" : "added"} successfully`,
+        message: editingPatient
+          ? "Patient updated successfully"
+          : "Patient added successfully",
         severity: "success",
       });
     } catch (error) {
@@ -140,18 +199,40 @@ const PatientList = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = (patient) => {
+    setPatientToDelete(patient);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
     try {
+      const token = getAuthToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       const response = await fetch(
-        `http://localhost:8000/api/patients/${patientToDelete.id}/`,
-        { 
+        `http://127.0.0.1:8000/api/admin/patients/${patientToDelete.id}/`,
+        {
           method: "DELETE",
-          headers: {
-            "Authorization": `Bearer ${authToken}`,
-          },
+          headers,
         }
       );
-      if (!response.ok) throw new Error("Delete failed");
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/admin/login");
+          return;
+        }
+        throw new Error("Delete failed");
+      }
+
       fetchPatients();
       setConfirmOpen(false);
       setSnackbar({
@@ -165,7 +246,18 @@ const PatientList = () => {
         message: "Failed to delete patient",
         severity: "error",
       });
+      setConfirmOpen(false);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmOpen(false);
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString();
   };
 
   return (
@@ -179,25 +271,7 @@ const PatientList = () => {
         </Typography>
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-          <Button
-            variant="contained"
-            onClick={() => {
-              setEditingPatient(null);
-              setForm({
-                first_name: "",
-                last_name: "",
-                email: "",
-                phone: "",
-                address: "",
-                age: "",
-                gender: "",
-                blood_type: "",
-                allergies: "",
-                medical_history: "",
-              });
-              setOpenDialog(true);
-            }}
-          >
+          <Button variant="contained" onClick={handleOpenAdd}>
             Add New Patient
           </Button>
         </Box>
@@ -205,24 +279,22 @@ const PatientList = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#199A8E" }}>
-              <TableCell sx={{ color: "#fff" }}>ID</TableCell>
               <TableCell sx={{ color: "#fff" }}>Name</TableCell>
               <TableCell sx={{ color: "#fff" }}>Email</TableCell>
               <TableCell sx={{ color: "#fff" }}>Phone</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Age</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Gender</TableCell>
+              <TableCell sx={{ color: "#fff" }}>Date of Birth</TableCell>
+              <TableCell sx={{ color: "#fff" }}>Address</TableCell>
               <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {currentPatients.map((patient) => (
               <TableRow key={patient.id}>
-                <TableCell>#{patient.id}</TableCell>
-                <TableCell>{patient.user.first_name} {patient.user.last_name}</TableCell>
-                <TableCell>{patient.user.email}</TableCell>
+                <TableCell>{patient.name}</TableCell>
+                <TableCell>{patient.email}</TableCell>
                 <TableCell>{patient.phone}</TableCell>
-                <TableCell>{patient.age}</TableCell>
-                <TableCell>{patient.get_gender_display()}</TableCell>
+                <TableCell>{formatDate(patient.date_of_birth)}</TableCell>
+                <TableCell>{patient.address}</TableCell>
                 <TableCell>
                   <Tooltip title="View Details">
                     <IconButton
@@ -233,34 +305,12 @@ const PatientList = () => {
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Edit">
-                    <IconButton
-                      onClick={() => {
-                        setEditingPatient(patient);
-                        setForm({
-                          first_name: patient.user.first_name,
-                          last_name: patient.user.last_name,
-                          email: patient.user.email,
-                          phone: patient.phone,
-                          address: patient.address,
-                          age: patient.age,
-                          gender: patient.gender,
-                          blood_type: patient.blood_type,
-                          allergies: patient.allergies,
-                          medical_history: patient.medical_history,
-                        });
-                        setOpenDialog(true);
-                      }}
-                    >
+                    <IconButton onClick={() => handleOpenEdit(patient)}>
                       <EditIcon color="primary" />
                     </IconButton>
                   </Tooltip>
                   <Tooltip title="Delete">
-                    <IconButton
-                      onClick={() => {
-                        setPatientToDelete(patient);
-                        setConfirmOpen(true);
-                      }}
-                    >
+                    <IconButton onClick={() => handleDelete(patient)}>
                       <DeleteIcon color="error" />
                     </IconButton>
                   </Tooltip>
@@ -279,135 +329,96 @@ const PatientList = () => {
 
       <Dialog
         open={openDialog}
-        onClose={() => setOpenDialog(false)}
+        onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
       >
         <DialogTitle>
-          {editingPatient ? "Edit Patient" : "Add New Patient"}
+          {editingPatient ? "Edit Patient" : "Add Patient"}
         </DialogTitle>
         <DialogContent>
           <TextField
-            label="First Name"
-            name="first_name"
-            value={form.first_name}
-            onChange={(e) => setForm({ ...form, first_name: e.target.value })}
-            error={!!errors.first_name}
-            helperText={errors.first_name}
+            label="Full Name *"
+            name="name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            error={!!errors.name}
+            helperText={errors.name || "At least 3 characters"}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="Last Name"
-            name="last_name"
-            value={form.last_name}
-            onChange={(e) => setForm({ ...form, last_name: e.target.value })}
-            error={!!errors.last_name}
-            helperText={errors.last_name}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Email"
+            label="Email *"
             name="email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             error={!!errors.email}
-            helperText={errors.email}
+            helperText={errors.email || "e.g., user@example.com"}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="Phone"
+            label="Phone *"
             name="phone"
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
             error={!!errors.phone}
-            helperText={errors.phone}
+            helperText={errors.phone || "10-15 digits only"}
             fullWidth
             margin="normal"
+            inputProps={{
+              inputMode: "numeric",
+              pattern: "[0-9]*",
+              maxLength: 15,
+            }}
           />
           <TextField
-            label="Address"
+            label="Date of Birth *"
+            name="date_of_birth"
+            type="date"
+            value={form.date_of_birth}
+            onChange={(e) =>
+              setForm({ ...form, date_of_birth: e.target.value })
+            }
+            error={!!errors.date_of_birth}
+            helperText={errors.date_of_birth}
+            fullWidth
+            margin="normal"
+            InputLabelProps={{
+              shrink: true,
+            }}
+          />
+          <TextField
+            label="Address *"
             name="address"
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
             error={!!errors.address}
-            helperText={errors.address}
+            helperText={errors.address || "Full address"}
             fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Age"
-            name="age"
-            type="number"
-            value={form.age}
-            onChange={(e) => setForm({ ...form, age: e.target.value })}
-            error={!!errors.age}
-            helperText={errors.age}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            select
-            label="Gender"
-            name="gender"
-            value={form.gender}
-            onChange={(e) => setForm({ ...form, gender: e.target.value })}
-            error={!!errors.gender}
-            helperText={errors.gender}
-            fullWidth
-            margin="normal"
-          >
-            <MenuItem value="M">Male</MenuItem>
-            <MenuItem value="F">Female</MenuItem>
-            <MenuItem value="O">Other</MenuItem>
-          </TextField>
-          <TextField
-            label="Blood Type"
-            name="blood_type"
-            value={form.blood_type}
-            onChange={(e) => setForm({ ...form, blood_type: e.target.value })}
-            fullWidth
-            margin="normal"
-          />
-          <TextField
-            label="Allergies"
-            name="allergies"
-            value={form.allergies}
-            onChange={(e) => setForm({ ...form, allergies: e.target.value })}
-            fullWidth
-            multiline
-            rows={2}
-            margin="normal"
-          />
-          <TextField
-            label="Medical History"
-            name="medical_history"
-            value={form.medical_history}
-            onChange={(e) => setForm({ ...form, medical_history: e.target.value })}
-            fullWidth
-            multiline
-            rows={3}
             margin="normal"
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button variant="contained" onClick={handleSave}>
-            Save
+            {editingPatient ? "Update" : "Add"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+      <Dialog open={confirmOpen} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {patientToDelete?.user?.first_name} {patientToDelete?.user?.last_name}?
+          Are you sure you want to delete {patientToDelete?.name}?
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={handleDelete}>
+          <Button onClick={handleCancelDelete}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+          >
             Delete
           </Button>
         </DialogActions>

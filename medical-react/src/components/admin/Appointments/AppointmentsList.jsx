@@ -18,19 +18,26 @@ import {
   Alert,
   Chip,
   IconButton,
+  MenuItem,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CustomPagination from "../../CustomPagination.jsx";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
+
 const AppointmentsList = () => {
   const [appointments, setAppointments] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [patients, setPatients] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [formData, setFormData] = useState({
-    doctorName: "",
-    patientName: "",
+    doctor: "",
+    patient: "",
     date: "",
     time: "",
     notes: "",
@@ -50,10 +57,8 @@ const AppointmentsList = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.doctorName.trim())
-      newErrors.doctorName = "Doctor name is required";
-    if (!formData.patientName.trim())
-      newErrors.patientName = "Patient name is required";
+    if (!formData.doctor) newErrors.doctor = "Doctor is required";
+    if (!formData.patient) newErrors.patient = "Patient is required";
     if (!formData.date) newErrors.date = "Date is required";
     if (!formData.time) newErrors.time = "Time is required";
     setErrors(newErrors);
@@ -62,16 +67,58 @@ const AppointmentsList = () => {
 
   const fetchAppointments = async () => {
     try {
-      const response = await fetch("http://localhost:5000/appointments");
-      setAppointments(await response.json());
+      const token = getAuthToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const [appointmentsRes, doctorsRes, patientsRes] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/admin/appointments/", { headers }),
+        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/admin/patients/", { headers }),
+      ]);
+
+      if (
+        [appointmentsRes, doctorsRes, patientsRes].some(
+          (res) => res.status === 401
+        )
+      ) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
+
+      const appointmentsData = await appointmentsRes.json();
+      const doctorsData = await doctorsRes.json();
+      const patientsData = await patientsRes.json();
+      setAppointments(
+        Array.isArray(appointmentsData)
+          ? appointmentsData
+          : appointmentsData.results || appointmentsData.data || []
+      );
+      setDoctors(
+        Array.isArray(doctorsData)
+          ? doctorsData
+          : doctorsData.results || doctorsData.data || []
+      );
+      setPatients(
+        Array.isArray(patientsData)
+          ? patientsData
+          : patientsData.results || patientsData.data || []
+      );
     } catch (error) {
-      showSnackbar("Failed to fetch appointments", "error");
+      showSnackbar("Failed to fetch data", "error");
     }
   };
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, [fetchAppointments]);
 
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
@@ -84,8 +131,8 @@ const AppointmentsList = () => {
   const handleOpenAdd = () => {
     setEditingAppointment(null);
     setFormData({
-      doctorName: "",
-      patientName: "",
+      doctor: "",
+      patient: "",
       date: "",
       time: "",
       notes: "",
@@ -98,8 +145,8 @@ const AppointmentsList = () => {
   const handleOpenEdit = (appointment) => {
     setEditingAppointment(appointment);
     setFormData({
-      doctorName: appointment.doctorName || appointment.doctor || "",
-      patientName: appointment.patientName || appointment.patient || "",
+      doctor: appointment.doctor?.id || "",
+      patient: appointment.patient?.id || "",
       date: appointment.date || "",
       time: appointment.time || "",
       notes: appointment.notes || "",
@@ -127,16 +174,41 @@ const AppointmentsList = () => {
     if (!validateForm()) return;
 
     try {
+      const token = getAuthToken();
       const url = editingAppointment
-        ? `http://localhost:5000/appointments/${editingAppointment.id}`
-        : "http://localhost:5000/appointments";
+        ? `http://127.0.0.1:8000/api/admin/appointments/${editingAppointment.id}/`
+        : "http://127.0.0.1:8000/api/admin/appointments/";
       const method = editingAppointment ? "PUT" : "POST";
+
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const requestData = {
+        doctor: formData.doctor,
+        patient: formData.patient,
+        date: formData.date,
+        time: formData.time,
+        notes: formData.notes,
+        status: formData.status,
+      };
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers,
+        body: JSON.stringify(requestData),
       });
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
 
       if (!response.ok) throw new Error("Failed to save appointment");
 
@@ -159,12 +231,29 @@ const AppointmentsList = () => {
 
   const handleConfirmDelete = async () => {
     try {
+      const token = getAuthToken();
       const response = await fetch(
-        `http://localhost:5000/appointments/${selectedAppointment.id}`,
-        { method: "DELETE" }
+        `http://127.0.0.1:8000/api/admin/appointments/${selectedAppointment.id}/`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
-      if (!response.ok) throw new Error("Failed to delete");
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired. Please login again.",
+          severity: "error",
+        });
+        navigate("/admin/login");
+        return;
+      }
+
+      if (!response.ok) throw new Error("Failed to delete appointment");
 
       fetchAppointments();
       setOpenConfirmDialog(false);
@@ -190,6 +279,16 @@ const AppointmentsList = () => {
       default:
         return "default";
     }
+  };
+
+  const getDoctorName = (doctorId) => {
+    const doctor = doctors.find((d) => d.id === doctorId);
+    return doctor ? doctor.name : "N/A";
+  };
+
+  const getPatientName = (patientId) => {
+    const patient = patients.find((p) => p.id === patientId);
+    return patient ? patient.name : "N/A";
   };
 
   const indexOfLastAppointment = currentPage * appointmentsPerPage;
@@ -233,10 +332,12 @@ const AppointmentsList = () => {
               <TableRow key={appointment.id}>
                 <TableCell>#{appointment.id}</TableCell>
                 <TableCell>
-                  {appointment.doctorName || appointment.doctor || "N/A"}
+                  {getDoctorName(appointment.doctor?.id || appointment.doctor)}
                 </TableCell>
                 <TableCell>
-                  {appointment.patientName || appointment.patient || "N/A"}
+                  {getPatientName(
+                    appointment.patient?.id || appointment.patient
+                  )}
                 </TableCell>
                 <TableCell>{appointment.date || "N/A"}</TableCell>
                 <TableCell>{appointment.time || "N/A"}</TableCell>
@@ -278,25 +379,41 @@ const AppointmentsList = () => {
         </DialogTitle>
         <DialogContent>
           <TextField
+            select
             margin="dense"
-            label="Doctor Name *"
-            name="doctorName"
+            label="Doctor *"
+            name="doctor"
             fullWidth
-            value={formData.doctorName}
+            value={formData.doctor}
             onChange={handleInputChange}
-            error={!!errors.doctorName}
-            helperText={errors.doctorName}
-          />
+            error={!!errors.doctor}
+            helperText={errors.doctor}
+          >
+            <MenuItem value="">Select Doctor</MenuItem>
+            {doctors.map((doctor) => (
+              <MenuItem key={doctor.id} value={doctor.id}>
+                {doctor.name}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
+            select
             margin="dense"
-            label="Patient Name *"
-            name="patientName"
+            label="Patient *"
+            name="patient"
             fullWidth
-            value={formData.patientName}
+            value={formData.patient}
             onChange={handleInputChange}
-            error={!!errors.patientName}
-            helperText={errors.patientName}
-          />
+            error={!!errors.patient}
+            helperText={errors.patient}
+          >
+            <MenuItem value="">Select Patient</MenuItem>
+            {patients.map((patient) => (
+              <MenuItem key={patient.id} value={patient.id}>
+                {patient.name}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             margin="dense"
             label="Date *"

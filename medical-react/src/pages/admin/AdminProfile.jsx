@@ -17,6 +17,7 @@ import {
   useTheme,
   CircularProgress,
   Alert,
+  Snackbar,
 } from "@mui/material";
 import {
   Edit,
@@ -24,11 +25,10 @@ import {
   CalendarToday,
   Person,
   Work,
-  School,
   Notifications,
-  CloudUpload,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 const ProfileCard = styled(Paper)(({ theme }) => ({
   background: `rgba(${
@@ -45,87 +45,92 @@ const ProfileCard = styled(Paper)(({ theme }) => ({
   },
 }));
 
+const API_URL = "http://127.0.0.1:8000/api/admin";
+
+const getAuthToken = () => {
+  return localStorage.getItem("access_token");
+};
+
 const AdminProfile = () => {
   const theme = useTheme();
   const [tabValue, setTabValue] = useState(0);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [adminData, setAdminData] = useState(null);
+  const [adminData, setAdminData] = useState({
+    name: "Admin User",
+    email: "admin@example.com",
+    phone: "+1234567890",
+    position: "System Administrator",
+    department: "IT",
+    responsibilities: "Manage system users and configurations",
+  });
   const [activityLog, setActivityLog] = useState([]);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchAdminData = async () => {
+  const fetchAdminData = async () => {
+    try {
+      setLoading(true);
+      const token = getAuthToken();
+
+      // محاولة جلب بيانات البروفايل
       try {
-        setLoading(true);
-        // Fetch admin data (assuming the current admin is user with id 1)
-        const adminResponse = await fetch("http://localhost:5000/users/1");
-        const admin = await adminResponse.json();
-
-        // Fetch activity log (using notifications as activity log)
-        const activityResponse = await fetch(
-          "http://localhost:5000/notifications"
-        );
-        const activities = await activityResponse.json();
-
-        setAdminData({
-          ...admin,
-          lastLogin: new Date().toLocaleString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-          position: "System Administrator",
-          department: "IT",
-          employeeId: "EMP-ADM-042",
-          joinDate: "10/02/2018",
-          responsibilities:
-            "Manage hospital systems, user accounts, and security policies",
-          education: [
-            {
-              institution: "Cairo University",
-              degree: "Bachelor of Computer Science",
-              period: "2003 - 2007",
-              description:
-                "Specialized in Information Systems and Network Security",
-            },
-            {
-              institution:
-                "Certified Information Systems Security Professional (CISSP)",
-              degree: "ISC2",
-              period: "2010",
-            },
-          ],
+        const adminResponse = await axios.get(`${API_URL}/profile/`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
-
-        // Transform notifications to activity log format
-        const transformedActivities = activities
-          .slice(0, 5)
-          .map((activity, index) => ({
-            id: index,
-            time: new Date().toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            action:
-              activity.message || `System notification: ${activity.status}`,
-            icon: <Notifications color="primary" />,
-          }));
-
-        setActivityLog(transformedActivities);
-        setLoading(false);
-      } catch (err) {
-        setError(err.message);
-        setLoading(false);
+        setAdminData(adminResponse.data);
+      } catch (profileError) {
+        console.warn("Using fallback profile data:", profileError.message);
       }
-    };
 
+      // محاولة جلب سجل النشاطات
+      try {
+        const activityResponse = await axios.get(`${API_URL}/activity-logs/`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setActivityLog(activityResponse.data.slice(0, 5));
+      } catch (activityError) {
+        console.warn("Using empty activity log:", activityError.message);
+        setActivityLog([
+          {
+            id: 1,
+            action: "System initialized",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error in fetchAdminData:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to load profile data",
+        severity: "error",
+      });
+      setLoading(false);
+    }
+  };
+
+  const handleUnauthorized = () => {
+    setSnackbar({
+      open: true,
+      message: "Session expired. Please login again.",
+      severity: "error",
+    });
+    setTimeout(() => navigate("/admin/login"), 2000);
+  };
+
+  useEffect(() => {
     fetchAdminData();
   }, []);
 
@@ -136,17 +141,33 @@ const AdminProfile = () => {
   const handleSaveChanges = async () => {
     try {
       setLoading(true);
-      await fetch(`http://localhost:5000/users/1`, {
-        method: "PATCH",
+      const token = getAuthToken();
+
+      await axios.patch(`${API_URL}/profile/`, adminData, {
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(adminData),
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Profile updated successfully",
+        severity: "success",
       });
       setEditMode(false);
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
+    } catch (error) {
+      console.error("Error saving profile:", error);
+      if (error.response?.status === 401) {
+        handleUnauthorized();
+      } else {
+        setSnackbar({
+          open: true,
+          message: error.response?.data?.message || "Failed to update profile",
+          severity: "error",
+        });
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -158,7 +179,11 @@ const AdminProfile = () => {
     }));
   };
 
-  if (loading && !adminData) {
+  const handleSnackbarClose = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  if (loading) {
     return (
       <Box
         sx={{
@@ -173,21 +198,8 @@ const AdminProfile = () => {
     );
   }
 
-  if (error) {
-    return (
-      <Box sx={{ p: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Box>
-    );
-  }
-
   return (
-    <Box
-      sx={{
-        p: 4,
-        minHeight: "100vh",
-      }}
-    >
+    <Box sx={{ p: 4, minHeight: "100vh" }}>
       {/* Header */}
       <Box
         sx={{
@@ -223,250 +235,247 @@ const AdminProfile = () => {
           {editMode ? (loading ? "Saving..." : "Save Changes") : "Edit Profile"}
         </Button>
       </Box>
-      {/* Right Column - Main Content */}
-      <Grid item xs={12} md={8}>
-        <ProfileCard>
-          <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              variant="scrollable"
-              scrollButtons="auto"
+
+      {/* Main Content */}
+      <Grid container spacing={3}>
+        {/* Left Column - Profile Card */}
+        <Grid item xs={12} md={4}>
+          <ProfileCard sx={{ p: 3, height: "100%" }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
             >
-              <Tab
-                label="Personal Info"
-                icon={<Person />}
-                iconPosition="start"
-              />
-              <Tab
-                label="Professional Info"
-                icon={<Work />}
-                iconPosition="start"
-              />
-              <Tab label="Education" icon={<School />} iconPosition="start" />
-              <Tab
-                label="Activity Log"
-                icon={<CalendarToday />}
-                iconPosition="start"
-              />
-            </Tabs>
-          </Box>
+              <Avatar
+                sx={{
+                  width: 120,
+                  height: 120,
+                  mb: 2,
+                  bgcolor: theme.palette.primary.main,
+                  fontSize: "3rem",
+                }}
+              >
+                {adminData.name.charAt(0)}
+              </Avatar>
+              <Typography variant="h5" fontWeight="bold">
+                {adminData.name}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {adminData.position}
+              </Typography>
 
-          <Box sx={{ p: 3 }}>
-            {tabValue === 0 && (
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Personal Information
+              <Box sx={{ mt: 3, width: "100%" }}>
+                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                  Account Details
                 </Typography>
-
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Username"
-                      value={adminData.username}
-                      variant="outlined"
-                      disabled
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Role"
-                      value={adminData.role}
-                      variant="outlined"
-                      disabled
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      value={adminData.email}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("email", e.target.value)
-                      }
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone"
-                      value={adminData.phone || ""}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("phone", e.target.value)
-                      }
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Location"
-                      value={adminData.location || ""}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("location", e.target.value)
-                      }
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                </Grid>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Email
+                  </Typography>
+                  <Typography>{adminData.email}</Typography>
+                </Box>
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Last Login
+                  </Typography>
+                  <Typography>
+                    {new Date().toLocaleString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Typography>
+                </Box>
               </Box>
-            )}
+            </Box>
+          </ProfileCard>
+        </Grid>
 
-            {tabValue === 1 && (
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Professional Information
-                </Typography>
+        {/* Right Column - Main Content */}
+        <Grid item xs={12} md={8}>
+          <ProfileCard>
+            <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+              >
+                <Tab
+                  label="Personal Info"
+                  icon={<Person />}
+                  iconPosition="start"
+                />
+                <Tab
+                  label="Professional Info"
+                  icon={<Work />}
+                  iconPosition="start"
+                />
+                <Tab
+                  label="Activity Log"
+                  icon={<CalendarToday />}
+                  iconPosition="start"
+                />
+              </Tabs>
+            </Box>
 
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Position"
-                      value={adminData.position}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("position", e.target.value)
-                      }
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Department"
-                      value={adminData.department}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("department", e.target.value)
-                      }
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Employee ID"
-                      value={adminData.employeeId}
-                      variant="outlined"
-                      disabled
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Join Date"
-                      value={adminData.joinDate}
-                      variant="outlined"
-                      disabled
-                      sx={{ mb: 2 }}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Responsibilities"
-                      value={adminData.responsibilities}
-                      variant="outlined"
-                      disabled={!editMode}
-                      onChange={(e) =>
-                        handleInputChange("responsibilities", e.target.value)
-                      }
-                      multiline
-                      rows={3}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
+            <Box sx={{ p: 3 }}>
+              {tabValue === 0 && (
+                <Box>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Personal Information
+                  </Typography>
 
-            {tabValue === 2 && (
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Education & Qualifications
-                </Typography>
-
-                {adminData.education.map((edu, index) => (
-                  <Box key={index} sx={{ mb: 3 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {edu.institution}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {edu.degree} • {edu.period}
-                    </Typography>
-                    {edu.description && (
-                      <Typography variant="body2" sx={{ mt: 1 }}>
-                        {edu.description}
-                      </Typography>
-                    )}
-                  </Box>
-                ))}
-
-                {editMode && (
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    startIcon={<CloudUpload />}
-                    sx={{ borderRadius: "12px" }}
-                  >
-                    Add Certification
-                  </Button>
-                )}
-              </Box>
-            )}
-
-            {tabValue === 3 && (
-              <Box>
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
-                  Recent Activity Log
-                </Typography>
-
-                <List dense>
-                  {activityLog.map((item, index) => (
-                    <ListItem key={index} sx={{ py: 1 }}>
-                      <ListItemAvatar>
-                        <Avatar
-                          sx={{
-                            bgcolor: `${item.icon.props.color}.light`,
-                            color: `${item.icon.props.color}.main`,
-                            width: 32,
-                            height: 32,
-                          }}
-                        >
-                          {item.icon}
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={item.action}
-                        secondary={item.time}
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Full Name"
+                        value={adminData.name}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("name", e.target.value)
+                        }
+                        sx={{ mb: 2 }}
                       />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-          </Box>
-        </ProfileCard>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Email"
+                        value={adminData.email}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("email", e.target.value)
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Phone"
+                        value={adminData.phone}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("phone", e.target.value)
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+
+              {tabValue === 1 && (
+                <Box>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Professional Information
+                  </Typography>
+
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Position"
+                        value={adminData.position}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("position", e.target.value)
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Department"
+                        value={adminData.department}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("department", e.target.value)
+                        }
+                        sx={{ mb: 2 }}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Responsibilities"
+                        value={adminData.responsibilities}
+                        variant="outlined"
+                        disabled={!editMode}
+                        onChange={(e) =>
+                          handleInputChange("responsibilities", e.target.value)
+                        }
+                        multiline
+                        rows={3}
+                      />
+                    </Grid>
+                  </Grid>
+                </Box>
+              )}
+
+              {tabValue === 2 && (
+                <Box>
+                  <Typography variant="h6" fontWeight="bold" gutterBottom>
+                    Recent Activity Log
+                  </Typography>
+
+                  <List dense>
+                    {activityLog.map((item) => (
+                      <ListItem key={item.id} sx={{ py: 1 }}>
+                        <ListItemAvatar>
+                          <Avatar
+                            sx={{
+                              bgcolor: "primary.light",
+                              color: "primary.main",
+                              width: 32,
+                              height: 32,
+                            }}
+                          >
+                            <Notifications color="primary" />
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={item.action}
+                          secondary={new Date(item.timestamp).toLocaleString()}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </Box>
+              )}
+            </Box>
+          </ProfileCard>
+        </Grid>
       </Grid>
+
       <Box sx={{ display: "flex", justifyContent: "center", mt: 3 }}>
         <Button variant="contained" onClick={() => navigate("/admin")}>
           Back to Dashboard
         </Button>
       </Box>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
