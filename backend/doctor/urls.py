@@ -7,7 +7,7 @@ from .views import (
     DoctorProfileUpdateView, DoctorDashboardStats, DoctorPatientsListView
  , AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView
 )
-from .views import (Generics_list, Generics_pk)
+from .views import (Generics_list, Generics_id)
 router = DefaultRouter()
 router.register(r'doctors', DoctorViewSet)
 
@@ -29,7 +29,7 @@ urlpatterns = [
     path('all-doctors/', Generics_list.as_view()),
 
     #6.2 Generic Class Based View get, put, delete
-    path('one-doctor/<int:id>', Generics_pk.as_view()),
+    path('one-doctor/<int:id>', Generics_id.as_view()),
 
 
 

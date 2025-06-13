@@ -3,6 +3,7 @@ from rest_framework import viewsets, status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.permissions import AllowAny
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
@@ -246,6 +247,8 @@ class Generics_list(generics.ListCreateAPIView):
 
 # 6.2 generics get - put - delete
 
-class Generics_pk(generics.RetrieveUpdateDestroyAPIView):
+class Generics_id(generics.RetrieveUpdateDestroyAPIView):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]
