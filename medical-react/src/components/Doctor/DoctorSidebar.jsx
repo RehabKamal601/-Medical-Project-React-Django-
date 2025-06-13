@@ -48,7 +48,7 @@ const DoctorSidebar = () => {
       <Box sx={styles.profileContainer}>
         <Avatar
           alt={user?.username || "Doctor"}
-          src={user?.image || "/doctor-avatar.jpg"}
+          src={user?.image || "https://static.vecteezy.com/system/resources/thumbnails/027/298/490/small/doctor-posing-portrait-free-photo.jpg"}
           sx={styles.avatar}
         />
         <Typography variant="h6" sx={styles.doctorName}>

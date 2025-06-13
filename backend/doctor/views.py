@@ -9,7 +9,7 @@ from datetime import date
 from django.contrib.auth import get_user_model
 import json
 
-from .models import Doctor, DoctorAvailability, Appointment
+from .models import Doctor, DoctorAvailability, Appointment, Patient
 from .serializers import (
     DoctorSerializer,
     DoctorRegisterSerializer,
@@ -184,15 +184,14 @@ class DoctorDashboardStats(APIView):
             date=today
         ).count()
         
-        total_patients = User.objects.filter(
-            role='patient',
+        total_patients = Patient.objects.filter(
             appointments__doctor=doctor
         ).distinct().count()
         
         return Response({
             "doctor": {
                 "name": f"Dr. {request.user.first_name} {request.user.last_name}".strip() or f"Dr. {request.user.username}",
-                "title": request.user.specialization or "Doctor"
+                "title": doctor.specialization or "Doctor"
             },
             "stats": [
                 {
