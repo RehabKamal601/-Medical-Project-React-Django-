@@ -1,9 +1,9 @@
 # //view
-from rest_framework import viewsets, status, generics, permissions
+from rest_framework import viewsets, status, generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
@@ -251,3 +251,45 @@ class Generics_id(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DoctorSerializer
     lookup_field = 'id'
     permission_classes = [AllowAny]
+
+
+# Appointments for patient components
+class Appointments_list(generics.ListCreateAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]  # لازم يكون المستخدم مسجل دخول
+
+    def perform_create(self, serializer):
+        try:
+            patient = Patient.objects.get(user=self.request.user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Only patients can create appointments.")
+        
+        serializer.save(patient=patient)
+
+
+class Appointment_id(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]
+
+# Reservations for patient components
+class Reservations_list(generics.ListCreateAPIView):
+    queryset = DoctorAvailability.objects.all()
+    serializer_class = DoctorAvailabilitySerializer
+
+class Reservation_id(generics.RetrieveUpdateDestroyAPIView):
+    queryset = DoctorAvailability.objects.all()
+    serializer_class = DoctorAvailabilitySerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]
+
+# for show all avialbilty days for doctor
+class DoctorAvailabilityListView(generics.ListAPIView):
+    serializer_class = DoctorAvailabilitySerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        doctor_id = self.kwargs['id']
+        return DoctorAvailability.objects.filter(doctor_id=doctor_id)

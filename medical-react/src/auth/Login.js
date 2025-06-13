@@ -10,7 +10,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
-// Primary color and its variants
 const primaryColor = "#199A8E";
 const primaryLight = "#E0F2F1";
 const primaryDark = "#0D6E64";
@@ -99,7 +98,11 @@ function Login() {
     const response = await loginUser(formData);
 
     if (response.success) {
-      // Redirect based on user role if available
+      // 🟢 تخزين patientId في localStorage
+      if (response.user && response.user.id) {
+        localStorage.setItem("patientId", response.user.id);
+      }
+
       if (response.role === 'doctor') {
         navigate('/doctor');
       } else if (response.role === 'admin') {
@@ -196,7 +199,6 @@ function Login() {
             Log In
           </Button>
           
-          {/* Register Button */}
           <Box sx={{ mt: 2, textAlign: 'center' }}>
             <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
               Don't have an account?

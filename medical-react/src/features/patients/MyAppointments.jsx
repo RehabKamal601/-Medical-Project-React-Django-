@@ -24,9 +24,9 @@ import axios from "axios";
 import { useAuth } from "../../hooks/useAuth";
 
 const statusColors = {
-  Confirmed: "success",
-  Pending: "warning",
-  Cancelled: "error",
+  approved: "success",
+  pending: "warning",
+  rejected: "error",
 };
 
 const MyAppointments = () => {
@@ -44,7 +44,6 @@ const MyAppointments = () => {
   const { user } = useAuth();
   const [authError, setAuthError] = useState("");
 
-  // Robust token retrieval
   const getToken = () => {
     return (
       (user && (user.access || user.token)) ||
@@ -64,7 +63,7 @@ const MyAppointments = () => {
     }
     try {
       const res = await axios.get(
-        "http://localhost:8000/api/doctor/patient/appointments/",
+        "http://localhost:8000/api/doctor/all-appointments/",
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -92,30 +91,28 @@ const MyAppointments = () => {
       filtered = filtered.filter((appt) => appt.status === filterStatus);
     }
     if (filterDate) {
-      filtered = filtered.filter((appt) => appt.date === filterDate);
+      filtered = filtered.filter((appt) => appt.date.startsWith(filterDate));
     }
     setFilteredAppointments(filtered);
     setPage(1);
   }, [appointments, filterStatus, filterDate]);
 
   const handleDelete = async (id) => {
-    setAuthError("");
     const token = getToken();
     if (!token) {
       setAuthError("You are not authenticated. Please log in again.");
       return;
     }
     try {
-      await axios.delete(`http://localhost:8000/api/doctor/patient/appointments/${id}/`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `http://localhost:8000/api/doctor/one-appointment/${id}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       fetchAppointments();
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setAuthError("Session expired. Please log in again.");
-      } else {
-        setAuthError("Delete failed. Please try again later.");
-      }
+      setAuthError("Delete failed. Please try again later.");
       console.error("Delete failed", err);
     } finally {
       setConfirmDeleteId(null);
@@ -123,7 +120,6 @@ const MyAppointments = () => {
   };
 
   const handleUpdate = async () => {
-    setAuthError("");
     const token = getToken();
     if (!token) {
       setAuthError("You are not authenticated. Please log in again.");
@@ -131,7 +127,7 @@ const MyAppointments = () => {
     }
     try {
       await axios.put(
-        `http://localhost:8000/api/doctor/patient/appointments/${selected.id}/`,
+        `http://localhost:8000/api/doctor/one-appointment/${selected.id}`,
         selected,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -140,11 +136,7 @@ const MyAppointments = () => {
       fetchAppointments();
       setEditOpen(false);
     } catch (err) {
-      if (err.response && err.response.status === 401) {
-        setAuthError("Session expired. Please log in again.");
-      } else {
-        setAuthError("Update failed. Please try again later.");
-      }
+      setAuthError("Update failed. Please try again later.");
       console.error("Update failed", err);
     }
   };
@@ -155,16 +147,28 @@ const MyAppointments = () => {
   );
 
   if (loading) return <CircularProgress sx={{ mt: 4 }} />;
-  if (authError) return <Typography color="error" sx={{ mt: 4 }}>{authError}</Typography>;
+  if (authError)
+    return (
+      <Typography color='error' sx={{ mt: 4 }}>
+        {authError}
+      </Typography>
+    );
 
   return (
-    <Box p={2}>
-      <Typography variant='h5' mb={2}>
+    <Box p={3}>
+      <Typography variant='h4' align='center' fontWeight='bold' gutterBottom>
         My Appointments
       </Typography>
 
-      <Box mb={2} display='flex' gap={2}>
-        <FormControl sx={{ minWidth: 120 }}>
+      <Box
+        mb={3}
+        display='flex'
+        justifyContent='center'
+        alignItems='center'
+        flexWrap='wrap'
+        gap={2}
+      >
+        <FormControl sx={{ minWidth: 150 }}>
           <InputLabel>Status</InputLabel>
           <Select
             value={filterStatus}
@@ -172,11 +176,12 @@ const MyAppointments = () => {
             onChange={(e) => setFilterStatus(e.target.value)}
           >
             <MenuItem value=''>All</MenuItem>
-            <MenuItem value='Confirmed'>Confirmed</MenuItem>
-            <MenuItem value='Pending'>Pending</MenuItem>
-            <MenuItem value='Cancelled'>Cancelled</MenuItem>
+            <MenuItem value='approved'>Approved</MenuItem>
+            <MenuItem value='pending'>Pending</MenuItem>
+            <MenuItem value='rejected'>Rejected</MenuItem>
           </Select>
         </FormControl>
+
         <TextField
           type='date'
           label='Filter Date'
@@ -187,10 +192,12 @@ const MyAppointments = () => {
       </Box>
 
       {paginatedAppointments.map((appt) => (
-        <Card key={appt.id} sx={{ mb: 2, p: 2 }}>
+        <Card key={appt.id} sx={{ mb: 2 }}>
           <CardContent>
-            <Typography variant='subtitle1'>{appt.doctorName}</Typography>
-            <Typography color='text.secondary'>{appt.specialty}</Typography>
+            <Typography variant='h6'>{appt.doctor_name}</Typography>
+            <Typography variant='subtitle2' color='text.secondary'>
+              Specialization: {appt.doctor?.specialization}
+            </Typography>
             <Typography>Date: {appt.date}</Typography>
             <Typography>Time: {appt.time}</Typography>
             <Chip
@@ -227,16 +234,20 @@ const MyAppointments = () => {
         count={Math.ceil(filteredAppointments.length / itemsPerPage)}
         page={page}
         onChange={(e, value) => setPage(value)}
-        sx={{ mt: 2 }}
+        sx={{ mt: 2, display: "flex", justifyContent: "center" }}
       />
 
+      {/* Dialogs below unchanged except layout fixes */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)}>
         <DialogTitle>Appointment Details</DialogTitle>
         <DialogContent>
           {selected && (
             <>
               <Typography>
-                <strong>Doctor:</strong> {selected.doctorName}
+                <strong>Doctor:</strong> {selected.doctor_name}
+              </Typography>
+              <Typography>
+                <strong>Specialization:</strong> {selected.specialization}
               </Typography>
               <Typography>
                 <strong>Date:</strong> {selected.date}
@@ -245,7 +256,7 @@ const MyAppointments = () => {
                 <strong>Time:</strong> {selected.time}
               </Typography>
               <Typography>
-                <strong>Reason:</strong> {selected.reason}
+                <strong>Notes:</strong> {selected.notes}
               </Typography>
               <Typography>
                 <strong>Status:</strong> {selected.status}

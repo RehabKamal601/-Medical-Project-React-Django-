@@ -3,6 +3,8 @@
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
+from django.contrib import admin
+from doctor.models import Patient  # Update to import from doctor app instead of patients app
 
 
 class Migration(migrations.Migration):

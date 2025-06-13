@@ -1,220 +1,133 @@
-import React, { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  Divider,
-  Card,
-  CardContent,
-  Avatar,
-  CircularProgress,
-} from "@mui/material";
-import { CalendarMonth, Edit, LocalHospital } from "@mui/icons-material";
-import axios from "axios";
-import { useUser } from "../../context/UserContext";
-import { useParams } from "react-router-dom";
+// import React, { useEffect, useState } from 'react';
+// import axios from 'axios';
+// import {
+//   Box,
+//   Typography,
+//   CircularProgress,
+//   Card,
+//   CardContent,
+//   Button,
+//   Stack,
+//   Dialog,
+//   DialogTitle,
+//   DialogContent,
+//   DialogActions,
+//   TextField,
+//   Snackbar,
+//   Alert,
+// } from '@mui/material';
+// import { format } from 'date-fns';
 
-const AppointmentConfirmation = () => {
-  const { docId } = useParams();
+// const AppointmentConfirmation = () => {
+//   const [reservations, setReservations] = useState([]);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState(null);
+//   const [selectedReservation, setSelectedReservation] = useState(null);
+//   const [newDate, setNewDate] = useState('');
+//   const [successMessage, setSuccessMessage] = useState('');
 
-  const { user } = useUser();
-  const [doctor, setDoctor] = useState(null);
-  const [loading, setLoading] = useState(true);
+//   const patientId = localStorage.getItem('patientId');
 
-  const [selectedDate, setSelectedDate] = useState(
-    "Wednesday, Jun 23, 2021 | 10:00 AM"
-  );
-  const [reason, setReason] = useState("Chest pain");
-  const [paymentMethod, setPaymentMethod] = useState("VISA");
+//   const fetchReservations = async () => {
+//     try {
+//       const res = await axios.get(`http://localhost:8000/api/all-appointments/?patient=${patientId}`);
+//       setReservations(res.data);
+//       setLoading(false);
+//     } catch (err) {
+//       setError('Failed to load reservations.');
+//       setLoading(false);
+//     }
+//   };
 
-  const [openDateModal, setOpenDateModal] = useState(false);
-  const [openReasonModal, setOpenReasonModal] = useState(false);
-  const [openPaymentModal, setOpenPaymentModal] = useState(false);
+//   useEffect(() => {
+//     fetchReservations();
+//   }, []);
 
-  useEffect(() => {
-    const fetchDoctor = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5000/doctors/${docId}`);
-        console.log(res.data);
-        setDoctor(res.data);
-        console.log(res.data.name);
-        console.log(res.data.fullname);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDoctor();
-  }, []);
+//   const handleEdit = (reservation) => {
+//     setSelectedReservation(reservation);
+//     setNewDate(reservation.date);
+//   };
 
-  const handleBook = async () => {
-    const payload = {
-      patientId: user.id,
-      doctorName: doctor.fullName,
-      specialty: doctor.specialty,
-      date: selectedDate.split(" | ")[0],
-      time: selectedDate.split(" | ")[1],
-      reason,
-      status: "pending",
-      paymentMethod,
-    };
+//   const handleUpdate = async () => {
+//     try {
+//       await axios.put(`http://localhost:8000/api/one-appointment/${selectedReservation.id}`, {
+//         ...selectedReservation,
+//         date: newDate,
+//       });
+//       setSuccessMessage('Reservation updated successfully!');
+//       setSelectedReservation(null);
+//       fetchReservations();
+//     } catch (err) {
+//       setError('Failed to update reservation.');
+//     }
+//   };
 
-    try {
-      await axios.post("http://localhost:5000/appointments", payload);
-      console.log("Appointment booked!");
-    } catch (err) {
-      console.error("Failed to book appointment.");
-    }
-  };
+//   const handleDelete = async (id) => {
+//     try {
+//       await axios.delete(`http://localhost:8000/api/one-appointment/${id}`);
+//       setSuccessMessage('Reservation cancelled successfully.');
+//       fetchReservations();
+//     } catch (err) {
+//       setError('Failed to cancel reservation.');
+//     }
+//   };
 
-  if (loading) return <CircularProgress />;
+//   if (loading) return <Box p={3}><CircularProgress /></Box>;
+//   if (error) return <Box p={3}><Typography color="error">{error}</Typography></Box>;
 
-  return (
-    <Card sx={{ maxWidth: 400, mx: "auto", mt: 4 }}>
-      <CardContent>
-        <Typography variant='h6' gutterBottom>
-          Appointment
-        </Typography>
+//   return (
+//     <Box p={3}>
+//       <Typography variant="h4" mb={3}>Your Reservations</Typography>
+//       {reservations.length === 0 && (
+//         <Typography>No reservations found.</Typography>
+//       )}
 
-        <div
-          style={{ display: "flex", alignItems: "center", marginBottom: 16 }}
-        >
-          <Avatar
-            src={doctor.image}
-            sx={{ width: 56, height: 56, marginRight: 2 }}
-          />
-          <div>
-            <Typography variant='subtitle1'>{doctor.fullName}</Typography>
-            <Typography variant='body2'>{doctor.specialty}</Typography>
-            <Typography variant='body2'>
-              ⭐ {doctor.rating} — {doctor.distance} away
-            </Typography>
-          </div>
-        </div>
+//       <Stack spacing={2}>
+//         {reservations.map((res) => (
+//           <Card key={res.id} sx={{ p: 2 }}>
+//             <CardContent>
+//               <Typography variant="h6">Doctor: {res.doctor_name}</Typography>
+//               <Typography>Date: {format(new Date(res.date), 'yyyy-MM-dd HH:mm')}</Typography>
+//               <Typography>Status: {res.status}</Typography>
+//               <Typography>Notes: {res.notes || 'N/A'}</Typography>
 
-        <Divider />
+//               <Stack direction="row" spacing={2} mt={2}>
+//                 <Button variant="outlined" onClick={() => handleEdit(res)}>Edit</Button>
+//                 <Button variant="outlined" color="error" onClick={() => handleDelete(res.id)}>Cancel</Button>
+//               </Stack>
+//             </CardContent>
+//           </Card>
+//         ))}
+//       </Stack>
 
-        {/* Date Section */}
-        <div style={{ marginTop: 16 }}>
-          <Typography variant='subtitle2'>Date</Typography>
-          <Typography
-            variant='body2'
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              <CalendarMonth fontSize='small' /> {selectedDate}
-            </span>
-            <Button size='small' onClick={() => setOpenDateModal(true)}>
-              Change
-            </Button>
-          </Typography>
-        </div>
+//       {/* Edit Dialog */}
+//       <Dialog open={!!selectedReservation} onClose={() => setSelectedReservation(null)}>
+//         <DialogTitle>Edit Reservation</DialogTitle>
+//         <DialogContent>
+//           <TextField
+//             label="New Date & Time"
+//             type="datetime-local"
+//             fullWidth
+//             value={newDate}
+//             onChange={(e) => setNewDate(e.target.value)}
+//             margin="normal"
+//           />
+//         </DialogContent>
+//         <DialogActions>
+//           <Button onClick={() => setSelectedReservation(null)}>Cancel</Button>
+//           <Button onClick={handleUpdate} variant="contained">Save</Button>
+//         </DialogActions>
+//       </Dialog>
 
-        {/* Reason Section */}
-        <div style={{ marginTop: 16 }}>
-          <Typography variant='subtitle2'>Reason</Typography>
-          <Typography
-            variant='body2'
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <span>
-              <LocalHospital fontSize='small' /> {reason}
-            </span>
-            <Button size='small' onClick={() => setOpenReasonModal(true)}>
-              Change
-            </Button>
-          </Typography>
-        </div>
+//       {/* Snackbar Alert */}
+//       <Snackbar open={!!successMessage} autoHideDuration={4000} onClose={() => setSuccessMessage('')}>
+//         <Alert severity="success" onClose={() => setSuccessMessage('')}>
+//           {successMessage}
+//         </Alert>
+//       </Snackbar>
+//     </Box>
+//   );
+// };
 
-        <Divider sx={{ my: 2 }} />
-
-        {/* Payment */}
-        <Typography variant='subtitle2'>Payment Detail</Typography>
-        <Typography variant='body2'>Consultation: $60.00</Typography>
-        <Typography variant='body2'>Admin Fee: $01.00</Typography>
-        <Typography variant='body2'>
-          Total: <strong style={{ color: "#0a9" }}>$61.00</strong>
-        </Typography>
-
-        {/* Payment Method */}
-        <Typography variant='subtitle2' sx={{ mt: 2 }}>
-          Payment Method
-        </Typography>
-        <Typography
-          variant='body2'
-          sx={{ display: "flex", justifyContent: "space-between" }}
-        >
-          {paymentMethod}
-          <Button size='small' onClick={() => setOpenPaymentModal(true)}>
-            Change
-          </Button>
-        </Typography>
-
-        <Divider sx={{ my: 2 }} />
-
-        <Button variant='contained' fullWidth onClick={handleBook}>
-          Booking
-        </Button>
-      </CardContent>
-
-      {/* Date Modal */}
-      <Dialog open={openDateModal} onClose={() => setOpenDateModal(false)}>
-        <DialogTitle>Select Date</DialogTitle>
-        <DialogContent>
-          {/* Replace this with a real calendar if you want */}
-          <Button
-            onClick={() => setSelectedDate("Friday, Jul 12, 2021 | 11:00 AM")}
-          >
-            Friday, Jul 12, 2021 | 11:00 AM
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDateModal(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Reason Modal */}
-      <Dialog open={openReasonModal} onClose={() => setOpenReasonModal(false)}>
-        <DialogTitle>Change Reason</DialogTitle>
-        <DialogContent>
-          <Button onClick={() => setReason("Headache")}>Headache</Button>
-          <Button onClick={() => setReason("Back pain")}>Back pain</Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenReasonModal(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Payment Modal */}
-      <Dialog
-        open={openPaymentModal}
-        onClose={() => setOpenPaymentModal(false)}
-      >
-        <DialogTitle>Select Payment Method</DialogTitle>
-        <DialogContent>
-          <Button onClick={() => setPaymentMethod("VISA")}>VISA</Button>
-          <Button onClick={() => setPaymentMethod("Mastercard")}>
-            Mastercard
-          </Button>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPaymentModal(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-    </Card>
-  );
-};
-
-export default AppointmentConfirmation;
+// // export default PatientReservations;
+// export default AppointmentConfirmation

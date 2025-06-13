@@ -223,6 +223,8 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
         fields = ['id', 'doctor', 'day', 'start_time', 'end_time']
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    doctor = DoctorSerializer(read_only=True)
+
     patient_name = serializers.SerializerMethodField()
     patient_id = serializers.SerializerMethodField()
     doctor_name = serializers.SerializerMethodField()

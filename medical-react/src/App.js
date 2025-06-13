@@ -43,6 +43,7 @@ import DoctorInfo from "./features/patients/DoctorInfo";
 import MyAppointments from "./features/patients/MyAppointments";
 import AppointmentConfirmation from "./features/patients/AppointmentConfirmation";
 import Profile from "./features/patients/Profile";
+import ReservationPage from "./features/patients/ReservationPage";
 
 // Patient Routes
 function PatientRoutes() {
@@ -54,6 +55,7 @@ function PatientRoutes() {
           <Route path='doctors/:id' element={<DoctorInfo />} />
           {/* <Route path='patients' element={<PatientsList />} /> */}
           <Route path='my-appointments' element={<MyAppointments />} />
+          <Route path="/make-reservation/:id" element={<ReservationPage />} />
           <Route
             path='confirm-appointment/:id'
             element={<AppointmentConfirmation />}
