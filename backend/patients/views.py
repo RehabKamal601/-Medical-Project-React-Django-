@@ -15,7 +15,7 @@ User = get_user_model()
 class PatientListView(generics.ListAPIView):
     queryset = Patient.objects.all()
     serializer_class = PatientSerializer
-    permission_classes = [permissions.IsAdminUser]
+    permission_classes = [permissions.AllowAny]
 
 class PatientCreateView(generics.CreateAPIView):
     queryset = Patient.objects.all()

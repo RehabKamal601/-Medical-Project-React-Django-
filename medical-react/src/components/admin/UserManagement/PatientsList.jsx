@@ -72,15 +72,12 @@ const PatientList = () => {
   const fetchPatients = async () => {
     try {
       const token = getAuthToken();
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/admin/patients/",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await fetch("http://127.0.0.1:8000/api/patients/", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
       if (response.status === 401) {
         setSnackbar({
@@ -93,7 +90,17 @@ const PatientList = () => {
       }
 
       const data = await response.json();
-      setPatients(data);
+      let patientsArray = [];
+      if (Array.isArray(data)) {
+        patientsArray = data;
+      } else if (Array.isArray(data.results)) {
+        patientsArray = data.results;
+      } else if (Array.isArray(data.data)) {
+        patientsArray = data.data;
+      } else {
+        patientsArray = [];
+      }
+      setPatients(patientsArray);
     } catch (error) {
       setSnackbar({
         open: true,
@@ -153,8 +160,8 @@ const PatientList = () => {
     try {
       const token = getAuthToken();
       const url = editingPatient
-        ? `http://127.0.0.1:8000/api/admin/patients/${editingPatient.id}/`
-        : "http://127.0.0.1:8000/api/admin/patients/";
+        ? `http://127.0.0.1:8000/api/patients/${editingPatient.id}/`
+        : "http://127.0.0.1:8000/api/patients/";
       const method = editingPatient ? "PUT" : "POST";
 
       const headers = {
@@ -213,7 +220,7 @@ const PatientList = () => {
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/api/admin/patients/${patientToDelete.id}/`,
+        `http://127.0.0.1:8000/api/patients/${patientToDelete.id}/`,
         {
           method: "DELETE",
           headers,
