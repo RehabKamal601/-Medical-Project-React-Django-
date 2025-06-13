@@ -7,13 +7,13 @@ from .views import (
     DoctorProfileUpdateView, DoctorDashboardStats, DoctorPatientsListView
  , AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView
 )
-
+from .views import (Generics_list, Generics_pk)
 router = DefaultRouter()
 router.register(r'doctors', DoctorViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-     path('register/', DoctorRegisterView.as_view(), name='doctor-register'),
+    path('register/', DoctorRegisterView.as_view(), name='doctor-register'),
     path('availability/', DoctorAvailabilityCreateView.as_view(), name='doctor-availability'),
     path('appointments/', AppointmentListView.as_view(), name='appointment-list'),
     path('appointments/create/', AppointmentCreateView.as_view(), name='appointment-create'),
@@ -22,6 +22,14 @@ urlpatterns = [
     path('profile/update/', DoctorProfileUpdateView.as_view(), name='doctor-profile-update'),
     path('dashboard/stats/', DoctorDashboardStats.as_view(), name='doctor-dashboard-stats'),
     path('patients/', DoctorPatientsListView.as_view(), name='doctor-patients-list'),
+
+
+    # this for patient component from abelhameed mohamed
+    #6.1 Generic Class Based View get, post
+    path('all-doctors/', Generics_list.as_view()),
+
+    #6.2 Generic Class Based View get, put, delete
+    path('one-doctor/<int:id>', Generics_pk.as_view()),
 
 
 

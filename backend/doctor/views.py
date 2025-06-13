@@ -234,3 +234,18 @@ class DoctorPatientsListView(generics.ListAPIView):
             return Appointment.objects.filter(doctor=doctor).select_related('patient').distinct('patient')
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile found for this user.")
+        
+
+
+# 6.1 generics get - post
+
+class Generics_list(generics.ListCreateAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+
+
+# 6.2 generics get - put - delete
+
+class Generics_pk(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
