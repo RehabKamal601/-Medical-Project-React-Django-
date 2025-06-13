@@ -2,6 +2,10 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@mui/material";
 import theme from "./theme";
 import { AuthProvider } from './hooks/useAuth';
+import Unauthorized from "./pages/Unauthorized";
+import AdminProtectedRoute from "./routes/AdminProtectedRoute";
+import DoctorProtectedRoute from "./routes/DoctorProtectedRoute";
+import PatientProtectedRoute from "./routes/PatientProtectedRoute";
 
 // Public Pages
 import MainDashboard from "./pages/MainDashboard";
@@ -48,7 +52,7 @@ function PatientRoutes() {
       <PatientLayout>
         <Routes>
           <Route path='/' element={<FindDoctorsView />} />
-          <Route path='doctors/:id' element={<DoctorInfo/>} />
+          <Route path='doctors/:id' element={<DoctorInfo />} />
           {/* <Route path='patients' element={<PatientsList />} /> */}
           <Route path='my-appointments' element={<MyAppointments />} />
           <Route path="/make-reservation/:id" element={<ReservationPage />} />
@@ -116,11 +120,18 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
 
             {/* Role-based Routes */}
-            <Route path="/doctor/*" element={<DoctorLayout />} />
-            <Route path="/admin/*" element={<AdminRoutes />} />
-            <Route path="/patient/*" element={<PatientRoutes />} />
+            <Route element={<DoctorProtectedRoute />}>
+              <Route path="/doctor/*" element={<DoctorLayout />} />
+            </Route>
+            <Route element={<AdminProtectedRoute />}>
+              <Route path="/admin/*" element={<AdminRoutes />} />
+            </Route>
+            <Route element={<PatientProtectedRoute />}>
+              <Route path="/patient/*" element={<PatientRoutes />} />
+            </Route>
           </Routes>
         </Router>
       </ThemeProvider>

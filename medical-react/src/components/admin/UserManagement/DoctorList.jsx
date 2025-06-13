@@ -77,7 +77,7 @@ const DoctorsList = () => {
       };
 
       const [doctorsRes, specialtiesRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/doctor/doctors/", { headers }),
         fetch("http://127.0.0.1:8000/api/admin/specialties/", { headers }),
       ]);
 
@@ -94,7 +94,19 @@ const DoctorsList = () => {
       const doctorsData = await doctorsRes.json();
       const specialtiesData = await specialtiesRes.json();
 
-      setDoctors(doctorsData);
+      // Assuming doctorsData is an array of doctor objects
+      let doctorsArray = [];
+      if (Array.isArray(doctorsData)) {
+        doctorsArray = doctorsData;
+      } else if (doctorsData.data && Array.isArray(doctorsData.data)) {
+        doctorsArray = doctorsData.data;
+      } else if (doctorsData.results && Array.isArray(doctorsData.results)) {
+        doctorsArray = doctorsData.results;
+      } else {
+        doctorsArray = [];
+      }
+
+      setDoctors(doctorsArray);
       setSpecialties(specialtiesData);
     } catch (error) {
       setSnackbar({
@@ -132,11 +144,11 @@ const DoctorsList = () => {
   const handleOpenEdit = (doctor) => {
     setEditingDoctor(doctor);
     setForm({
-      fullName: doctor.name,
-      email: doctor.email,
-      phone: doctor.phone,
-      specialtyId: doctor.specialty,
-      bio: doctor.bio,
+      fullName: doctor.name || doctor.full_name || "",
+      email: doctor.email || "",
+      phone: doctor.phone || "",
+      specialtyId: doctor.specialty || doctor.specialty_id || "",
+      bio: doctor.bio || "",
     });
     setErrors({});
     setOpenDialog(true);
@@ -152,8 +164,8 @@ const DoctorsList = () => {
     try {
       const token = getAuthToken();
       const url = editingDoctor
-        ? `http://127.0.0.1:8000/api/admin/doctors/${editingDoctor.id}/`
-        : "http://127.0.0.1:8000/api/admin/doctors/";
+        ? `http://127.0.0.1:8000/api/doctor/doctors/${editingDoctor.id}/`
+        : "http://127.0.0.1:8000/api/doctor/doctors/";
       const method = editingDoctor ? "PUT" : "POST";
 
       const headers = {
@@ -220,7 +232,7 @@ const DoctorsList = () => {
       };
 
       const response = await fetch(
-        `http://127.0.0.1:8000/api/admin/doctors/${doctorToDelete.id}/`,
+        `http://127.0.0.1:8000/api/doctor/doctors/${doctorToDelete.id}/`,
         {
           method: "DELETE",
           headers,
@@ -296,8 +308,10 @@ const DoctorsList = () => {
           <TableBody>
             {currentDoctors.map((doctor) => (
               <TableRow key={doctor.id}>
-                <TableCell>{doctor.name}</TableCell>
-                <TableCell>{getSpecialtyName(doctor.specialty)}</TableCell>
+                <TableCell>{doctor.name || doctor.full_name}</TableCell>
+                <TableCell>
+                  {getSpecialtyName(doctor.specialty || doctor.specialty_id)}
+                </TableCell>
                 <TableCell>{doctor.email}</TableCell>
                 <TableCell>{doctor.phone}</TableCell>
                 <TableCell>

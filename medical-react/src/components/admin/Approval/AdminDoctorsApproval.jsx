@@ -176,7 +176,9 @@ export default function AdminDoctorApproval() {
                 <TableCell>{doctor.name}</TableCell>
                 <TableCell>{doctor.email}</TableCell>
                 <TableCell>{doctor.phone}</TableCell>
-                <TableCell>{doctor.specialty?.name || "N/A"}</TableCell>
+                <TableCell>
+                  {doctor.specialty?.name || "Without Specialty"}
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={
