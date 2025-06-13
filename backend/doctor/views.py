@@ -252,3 +252,35 @@ class Generics_id(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = DoctorSerializer
     lookup_field = 'id'
     permission_classes = [AllowAny]
+
+
+# Appointments for patient components
+class Appointments_list(generics.ListCreateAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+
+class Appointment_id(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]
+
+# Reservations for patient components
+class Reservations_list(generics.ListCreateAPIView):
+    queryset = DoctorAvailability.objects.all()
+    serializer_class = DoctorAvailabilitySerializer
+
+class Reservation_id(generics.RetrieveUpdateDestroyAPIView):
+    queryset = DoctorAvailability.objects.all()
+    serializer_class = DoctorAvailabilitySerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]
+
+# for show all avialbilty days for doctor
+class DoctorAvailabilityListView(generics.ListAPIView):
+    serializer_class = DoctorAvailabilitySerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        doctor_id = self.kwargs['doctor_id']
+        return DoctorAvailability.objects.filter(doctor_id=doctor_id)

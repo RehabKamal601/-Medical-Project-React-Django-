@@ -9,7 +9,7 @@ import {
   Button,
 } from "@mui/material";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 
 const DoctorInfo = () => {
   const { id } = useParams();
@@ -91,9 +91,14 @@ const DoctorInfo = () => {
 
         {/* Reservation Button */}
         <Box mt={3}>
-          <Button variant='contained' color='primary'>
-            Make Reservation
-          </Button>
+          <Link
+            to={`/patient/make-reservation/${id}`}
+            style={{ textDecoration: "none" }}
+          >
+            <Button variant='contained' color='primary'>
+              Make Reservation
+            </Button>
+          </Link>
         </Box>
       </Card>
     </Box>
