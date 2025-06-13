@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { 
   Box, TextField, Typography, Button, Paper,
   Avatar, Divider, InputAdornment, Modal, Backdrop, Fade,
-  Alert, Snackbar, CircularProgress
+  Alert, Snackbar, CircularProgress, MenuItem
 } from "@mui/material";
 import axiosInstance from "../../api/axios";
 import { useAuth } from "../../hooks/useAuth";
@@ -533,6 +533,7 @@ const DoctorProfile = () => {
         />
         
         <TextField
+          select
           fullWidth
           label="Specialty"
           name="specialization"
@@ -549,7 +550,15 @@ const DoctorProfile = () => {
             ),
           }}
           sx={styles.textField}
-        />
+        >
+          <MenuItem value="General">General</MenuItem>
+          <MenuItem value="Lungs Specialist">Lungs Specialist</MenuItem>
+          <MenuItem value="Dentist">Dentist</MenuItem>
+          <MenuItem value="Psychiatrist">Psychiatrist</MenuItem>
+          <MenuItem value="Covid-19">Covid-19</MenuItem>
+          <MenuItem value="Surgeon">Surgeon</MenuItem>
+          <MenuItem value="Cardiologist">Cardiologist</MenuItem>
+        </TextField>
 
         <TextField
           fullWidth
