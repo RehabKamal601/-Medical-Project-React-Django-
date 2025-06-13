@@ -1,9 +1,9 @@
 # //view
-from rest_framework import viewsets, status, generics, permissions
+from rest_framework import viewsets, status, generics, permissions, serializers
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
@@ -257,7 +257,16 @@ class Generics_id(generics.RetrieveUpdateDestroyAPIView):
 class Appointments_list(generics.ListCreateAPIView):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]  # لازم يكون المستخدم مسجل دخول
+
+    def perform_create(self, serializer):
+        try:
+            patient = Patient.objects.get(user=self.request.user)
+        except Patient.DoesNotExist:
+            raise serializers.ValidationError("Only patients can create appointments.")
+        
+        serializer.save(patient=patient)
+
 
 class Appointment_id(generics.RetrieveUpdateDestroyAPIView):
     queryset = Appointment.objects.all()
