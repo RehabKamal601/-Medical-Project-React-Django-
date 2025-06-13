@@ -77,12 +77,19 @@ const AdminHomePage = () => {
           axios.get(`${API_URL}/activity-logs`, { headers }),
         ]);
 
+        // Filter today's appointments
+        const todayStr = new Date().toISOString().split("T")[0];
+        const todayAppointments =
+          appointmentsRes.data?.filter((apt) =>
+            apt.date?.startsWith(todayStr)
+          ) || [];
+
         setStats({
           doctors: doctorsRes.data?.count || doctorsRes.data?.length || 0,
           patients: patientsRes.data?.count || patientsRes.data?.length || 0,
-          appointmentsToday:
-            appointmentsRes.data?.count || appointmentsRes.data?.length || 0,
+          appointmentsToday: todayAppointments.length,
           systemAlerts: alertsRes.data?.count || alertsRes.data?.length || 0,
+          appointments: todayAppointments,
           loading: false,
         });
 

@@ -58,15 +58,19 @@ const PatientProfile = () => {
           setLoading(false);
           return;
         }
-        const response = await fetch("http://localhost:8000/api/patients/profile/", {
-          headers: {
-            "Authorization": `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          "http://localhost:8000/api/patients/profile/",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
         if (response.status === 401) {
           setSnackbar({
             open: true,
-            message: "انتهت صلاحية الجلسة أو لم يتم تسجيل الدخول. يرجى تسجيل الدخول مجددًا.",
+            message:
+              "انتهت صلاحية الجلسة أو لم يتم تسجيل الدخول. يرجى تسجيل الدخول مجددًا.",
             severity: "error",
           });
           setLoading(false);
@@ -103,26 +107,50 @@ const PatientProfile = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.first_name.trim()) newErrors.first_name = "First name is required";
-    if (!formData.last_name.trim()) newErrors.last_name = "Last name is required";
-    if (!formData.email.includes("@")) newErrors.email = "Valid email is required";
-    if (formData.age && (formData.age < 1 || formData.age > 120)) newErrors.age = "Age must be between 1-120";
+    if (!formData.first_name.trim())
+      newErrors.first_name = "First name is required";
+    if (!formData.last_name.trim())
+      newErrors.last_name = "Last name is required";
+    if (!formData.email.includes("@"))
+      newErrors.email = "Valid email is required";
+    if (formData.age && (formData.age < 1 || formData.age > 120))
+      newErrors.age = "Age must be between 1-120";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  const getToken = () => {
+    if (authToken) return authToken;
+    if (user && user.access) return user.access;
+    if (user && user.refresh) return user.refresh;
+    if (localStorage.getItem("access")) return localStorage.getItem("access");
+    if (localStorage.getItem("token")) return localStorage.getItem("token");
+    return null;
+  };
+
   const handleSave = async () => {
     if (!validateForm()) return;
-
-    try {
-      const response = await fetch("http://localhost:8000/api/patients/profile/", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(formData),
+    const token = getToken();
+    if (!token) {
+      setSnackbar({
+        open: true,
+        message: "يرجى تسجيل الدخول أولاً.",
+        severity: "error",
       });
+      return;
+    }
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/patients/profile/",
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to update profile");
 
@@ -150,7 +178,8 @@ const PatientProfile = () => {
   };
 
   if (loading) return <Typography sx={{ mt: 4 }}>Loading...</Typography>;
-  if (!patient) return <Typography sx={{ mt: 4 }}>Profile not found</Typography>;
+  if (!patient)
+    return <Typography sx={{ mt: 4 }}>Profile not found</Typography>;
 
   const fullName = `${patient.user.first_name} ${patient.user.last_name}`;
 
@@ -158,7 +187,14 @@ const PatientProfile = () => {
     <Container sx={{ py: 4 }}>
       <Card sx={{ maxWidth: 800, mx: "auto", boxShadow: 4 }}>
         <CardContent>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 3,
+            }}
+          >
             <Typography variant="h4">My Profile</Typography>
             {editMode ? (
               <Button
@@ -180,24 +216,34 @@ const PatientProfile = () => {
           </Box>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} md={4} sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <Grid
+              item
+              xs={12}
+              md={4}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+              }}
+            >
               <Avatar
-                sx={{ 
-                  width: 150, 
+                sx={{
+                  width: 150,
                   height: 150,
                   bgcolor: "#199A8E",
                   fontSize: 60,
-                  mb: 2
+                  mb: 2,
                 }}
               >
-                {patient.user.first_name.charAt(0)}{patient.user.last_name.charAt(0)}
+                {patient.user.first_name.charAt(0)}
+                {patient.user.last_name.charAt(0)}
               </Avatar>
               {editMode ? (
                 <>
                   <TextField
                     label="First Name"
                     name="first_name"
-                    value={formData.first_name}
+                    value={formData.first_name || ""}
                     onChange={handleChange}
                     error={!!errors.first_name}
                     helperText={errors.first_name}
@@ -207,7 +253,7 @@ const PatientProfile = () => {
                   <TextField
                     label="Last Name"
                     name="last_name"
-                    value={formData.last_name}
+                    value={formData.last_name || ""}
                     onChange={handleChange}
                     error={!!errors.last_name}
                     helperText={errors.last_name}
@@ -223,16 +269,19 @@ const PatientProfile = () => {
             </Grid>
 
             <Grid item xs={12} md={8}>
-              <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography
+                variant="h6"
+                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <PersonIcon /> Personal Information
               </Typography>
-              
+
               {editMode ? (
                 <>
                   <TextField
                     label="Email"
                     name="email"
-                    value={formData.email}
+                    value={formData.email || ""}
                     onChange={handleChange}
                     error={!!errors.email}
                     helperText={errors.email}
@@ -242,7 +291,7 @@ const PatientProfile = () => {
                   <TextField
                     label="Phone"
                     name="phone"
-                    value={formData.phone}
+                    value={formData.phone || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -250,7 +299,7 @@ const PatientProfile = () => {
                   <TextField
                     label="Address"
                     name="address"
-                    value={formData.address}
+                    value={formData.address || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -261,7 +310,7 @@ const PatientProfile = () => {
                     label="Age"
                     name="age"
                     type="number"
-                    value={formData.age}
+                    value={formData.age || ""}
                     onChange={handleChange}
                     error={!!errors.age}
                     helperText={errors.age}
@@ -272,7 +321,7 @@ const PatientProfile = () => {
                     select
                     label="Gender"
                     name="gender"
-                    value={formData.gender}
+                    value={formData.gender || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -284,28 +333,44 @@ const PatientProfile = () => {
                 </>
               ) : (
                 <>
-                  <Typography><strong>Email:</strong> {patient.user.email}</Typography>
-                  <Typography><strong>Phone:</strong> {patient.phone || "N/A"}</Typography>
-                  <Typography><strong>Address:</strong> {patient.address || "N/A"}</Typography>
-                  <Typography><strong>Age:</strong> {patient.age || "N/A"}</Typography>
                   <Typography>
-                    <strong>Gender:</strong> {patient.gender === 'M' ? 'Male' : patient.gender === 'F' ? 'Female' : 'Other'}
+                    <strong>Email:</strong> {patient.user.email}
+                  </Typography>
+                  <Typography>
+                    <strong>Phone:</strong> {patient.phone || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Address:</strong> {patient.address || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Age:</strong> {patient.age || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Gender:</strong>{" "}
+                    {patient.gender === "M"
+                      ? "Male"
+                      : patient.gender === "F"
+                      ? "Female"
+                      : "Other"}
                   </Typography>
                 </>
               )}
 
               <Divider sx={{ my: 3 }} />
 
-              <Typography variant="h6" sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography
+                variant="h6"
+                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              >
                 <MedicalInformationIcon /> Medical Information
               </Typography>
-              
+
               {editMode ? (
                 <>
                   <TextField
                     label="Blood Type"
                     name="blood_type"
-                    value={formData.blood_type}
+                    value={formData.blood_type || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -313,7 +378,7 @@ const PatientProfile = () => {
                   <TextField
                     label="Allergies"
                     name="allergies"
-                    value={formData.allergies}
+                    value={formData.allergies || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -323,7 +388,7 @@ const PatientProfile = () => {
                   <TextField
                     label="Medical History"
                     name="medical_history"
-                    value={formData.medical_history}
+                    value={formData.medical_history || ""}
                     onChange={handleChange}
                     fullWidth
                     margin="normal"
@@ -337,11 +402,14 @@ const PatientProfile = () => {
                     <strong>Blood Type:</strong> {patient.blood_type || "N/A"}
                   </Typography>
                   <Typography>
-                    <strong>Allergies:</strong> {patient.allergies || "None recorded"}
+                    <strong>Allergies:</strong>{" "}
+                    {patient.allergies || "None recorded"}
                   </Typography>
                   {patient.medical_history && (
                     <>
-                      <Typography><strong>Medical History:</strong></Typography>
+                      <Typography>
+                        <strong>Medical History:</strong>
+                      </Typography>
                       <Typography sx={{ whiteSpace: "pre-line", mt: 1 }}>
                         {patient.medical_history}
                       </Typography>
@@ -359,7 +427,7 @@ const PatientProfile = () => {
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert 
+        <Alert
           severity={snackbar.severity}
           onClose={() => setSnackbar({ ...snackbar, open: false })}
         >
