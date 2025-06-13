@@ -5,4 +5,3 @@ from .models import Doctor,Patient, DoctorAvailability, Appointment
 admin.site.register(Doctor)
 admin.site.register(DoctorAvailability)
 admin.site.register(Appointment)
-admin.site.register(Patient)
