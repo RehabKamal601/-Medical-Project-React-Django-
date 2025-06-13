@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -11,35 +11,38 @@ import {
   FormControl,
   Snackbar,
   Alert,
-  CircularProgress
-} from '@mui/material';
-import { useParams } from 'react-router-dom';
+  CircularProgress,
+} from "@mui/material";
+import { useParams } from "react-router-dom";
 
 const ReservationPage = () => {
-  const { id } = useParams();
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [notes, setNotes] = useState('');
+  const { id } = useParams(); // doctor id
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [notes, setNotes] = useState("");
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [availability, setAvailability] = useState([]);
-  const [minDate, setMinDate] = useState('');
-
-  const patientId = localStorage.getItem('patientId'); // Or get from auth context
+  const [minDate, setMinDate] = useState("");
 
   useEffect(() => {
-    // Set minimum date to tomorrow
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    setMinDate(tomorrow.toISOString().split('T')[0]);
+    setMinDate(tomorrow.toISOString().split("T")[0]);
   }, []);
 
   useEffect(() => {
     axios
-      .get(`http://localhost:8000/api/doctors/${id}/availability/`)
-      .then((res) => setAvailability(res.data))
-      .catch(() => setAvailability([]));
+      .get(`http://localhost:8000/api/doctor/${id}/availability/`)
+      .then((res) => {
+        console.log("Doctor Availability:", res.data);
+        setAvailability(res.data);
+      })
+      .catch((err) => {
+        console.error("Error fetching availability:", err);
+        setAvailability([]);
+      });
   }, [id]);
 
   const handleSubmit = async (e) => {
@@ -56,36 +59,74 @@ const ReservationPage = () => {
       return;
     }
 
+    const userData = localStorage.getItem("user_data");
+    const accessToken = localStorage.getItem("access_token");
+
+    if (!userData || !accessToken) {
+      setError("Patient not logged in. Please log in first.");
+      setLoading(false);
+      return;
+    }
+
+    const parsedUser = JSON.parse(userData);
+    const patientId = parsedUser?.id;
+
+    if (!patientId) {
+      setError("Patient ID not found. Please log in again.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const datetime = `${date}T${time}`;
-      await axios.post('http://localhost:8000/api/all-appointments/', {
-        doctor: id,
+      const datetime = new Date(`${date}T${time}`).toISOString();
+
+      const payload = {
+        doctor: parseInt(id),
         patient: patientId,
         date: datetime,
-        notes
-      });
+        notes: notes || "",
+      };
+
+      console.log("Payload to send:", payload);
+
+      const res = await axios.post(
+        "http://localhost:8000/api/doctor/all-appointments/",
+        payload,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      console.log("Server response:", res.data);
+
       setSuccess(true);
-      setDate('');
-      setTime('');
-      setNotes('');
+      setDate("");
+      setTime("");
+      setNotes("");
     } catch (err) {
-      setError('Reservation failed. Try again.');
+      console.error("Full error:", err.response?.data || err.message);
+      setError(
+        err.response?.data?.detail ||
+          "Reservation failed. Please check your inputs and try again."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box p={4} maxWidth={600} mx="auto">
-      <Typography variant="h4" fontWeight={600} gutterBottom>
+    <Box p={4} maxWidth={600} mx='auto'>
+      <Typography variant='h4' fontWeight={600} gutterBottom>
         Book Appointment
       </Typography>
       <form onSubmit={handleSubmit}>
         <TextField
           fullWidth
-          margin="normal"
-          type="date"
-          label="Date"
+          margin='normal'
+          type='date'
+          label='Date'
           InputLabelProps={{ shrink: true }}
           value={date}
           onChange={(e) => setDate(e.target.value)}
@@ -93,12 +134,12 @@ const ReservationPage = () => {
           inputProps={{ min: minDate }}
         />
 
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="time-label">Available Times</InputLabel>
+        <FormControl fullWidth margin='normal'>
+          <InputLabel id='time-label'>Available Times</InputLabel>
           <Select
-            labelId="time-label"
+            labelId='time-label'
             value={time}
-            label="Available Times"
+            label='Available Times'
             onChange={(e) => setTime(e.target.value)}
             required
           >
@@ -112,8 +153,8 @@ const ReservationPage = () => {
 
         <TextField
           fullWidth
-          margin="normal"
-          label="Notes"
+          margin='normal'
+          label='Notes'
           multiline
           rows={4}
           value={notes}
@@ -122,25 +163,41 @@ const ReservationPage = () => {
 
         <Box mt={3}>
           <Button
-            type="submit"
-            variant="contained"
-            color="primary"
+            type='submit'
+            variant='contained'
+            color='primary'
             disabled={loading}
             fullWidth
           >
-            {loading ? <CircularProgress size={24} /> : 'Reserve Appointment'}
+            {loading ? <CircularProgress size={24} /> : "Reserve Appointment"}
           </Button>
         </Box>
       </form>
 
-      <Snackbar open={success} autoHideDuration={6000} onClose={() => setSuccess(false)}>
-        <Alert onClose={() => setSuccess(false)} severity="success" sx={{ width: '100%' }}>
+      <Snackbar
+        open={success}
+        autoHideDuration={6000}
+        onClose={() => setSuccess(false)}
+      >
+        <Alert
+          onClose={() => setSuccess(false)}
+          severity='success'
+          sx={{ width: "100%" }}
+        >
           Reservation successfully made!
         </Alert>
       </Snackbar>
 
-      <Snackbar open={!!error} autoHideDuration={6000} onClose={() => setError(null)}>
-        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={() => setError(null)}
+      >
+        <Alert
+          onClose={() => setError(null)}
+          severity='error'
+          sx={{ width: "100%" }}
+        >
           {error}
         </Alert>
       </Snackbar>

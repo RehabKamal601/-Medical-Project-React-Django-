@@ -10,7 +10,7 @@ from .views import (
 from .views import (Generics_list, Generics_id, Appointments_list, Appointment_id, Reservations_list, Reservation_id)
 
 router = DefaultRouter()
-router.register(r'doctors', DoctorViewSet)
+router.register('doctors', DoctorViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -41,12 +41,14 @@ urlpatterns = [
 
     path('all-reservations/', Reservations_list.as_view()),
 
-    #6.2 Generic Class Based View get, put, delete
-    path('one-reservation/<int:id>', Reservation_id.as_view()),
+    # #6.2 Generic Class Based View get, put, delete
+    # path('<int:id>/availability', Reservation_id.as_view()),
 
 
-    # by using views 
-    path('<int:id>/availability', DoctorAvailabilityListView.as_view(), name='doctor-availability'),
+    # # by using views 
+    # path('doctors/<int:id>/availability', DoctorAvailabilityListView.as_view(), name='availability'),
+
+    path('<int:id>/availability/', DoctorAvailabilityListView.as_view(), name='doctor-availability-by-id'),
 
 ]
 

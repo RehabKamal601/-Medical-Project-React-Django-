@@ -257,6 +257,7 @@ class Generics_id(generics.RetrieveUpdateDestroyAPIView):
 class Appointments_list(generics.ListCreateAPIView):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
+    permission_classes = [AllowAny]
 
 class Appointment_id(generics.RetrieveUpdateDestroyAPIView):
     queryset = Appointment.objects.all()
@@ -281,5 +282,5 @@ class DoctorAvailabilityListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        doctor_id = self.kwargs['doctor_id']
+        doctor_id = self.kwargs['id']
         return DoctorAvailability.objects.filter(doctor_id=doctor_id)
