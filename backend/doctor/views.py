@@ -3,12 +3,13 @@ from rest_framework import viewsets, status, generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.permissions import AllowAny
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
 import json
 
-from .models import Doctor, DoctorAvailability, Appointment
+from .models import Doctor, DoctorAvailability, Appointment, Patient
 from .serializers import (
     DoctorSerializer,
     DoctorRegisterSerializer,
@@ -183,15 +184,14 @@ class DoctorDashboardStats(APIView):
             date=today
         ).count()
         
-        total_patients = User.objects.filter(
-            role='patient',
+        total_patients = Patient.objects.filter(
             appointments__doctor=doctor
         ).distinct().count()
         
         return Response({
             "doctor": {
                 "name": f"Dr. {request.user.first_name} {request.user.last_name}".strip() or f"Dr. {request.user.username}",
-                "title": request.user.specialization or "Doctor"
+                "title": doctor.specialization or "Doctor"
             },
             "stats": [
                 {
@@ -234,3 +234,20 @@ class DoctorPatientsListView(generics.ListAPIView):
             return Appointment.objects.filter(doctor=doctor).select_related('patient').distinct('patient')
         except Doctor.DoesNotExist:
             raise NotAuthenticated("No doctor profile found for this user.")
+        
+
+
+# 6.1 generics get - post
+
+class Generics_list(generics.ListCreateAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+
+
+# 6.2 generics get - put - delete
+
+class Generics_id(generics.RetrieveUpdateDestroyAPIView):
+    queryset = Doctor.objects.all()
+    serializer_class = DoctorSerializer
+    lookup_field = 'id'
+    permission_classes = [AllowAny]

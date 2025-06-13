@@ -46,7 +46,7 @@ function Register() {
     username: "",
     password: "",
     confirmPassword: "",
-    role: "patient", // الديفولت مريض
+    role: "patient", // default is patient
     specialization: ""
   });
   const [showSpecialization, setShowSpecialization] = useState(false);
@@ -314,7 +314,7 @@ function Register() {
                 },
               }}
               disabled={
-                // تحقق من الحقول المطلوبة فقط
+                // Only check required fields
                 (formData.role === "doctor"
                   ? ["name", "email", "username", "password", "confirmPassword", "role", "specialization"]
                   : ["name", "email", "username", "password", "confirmPassword", "role"]

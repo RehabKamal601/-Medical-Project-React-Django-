@@ -12,7 +12,7 @@ import {
 } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { styles } from "../doctorStyle/DoctorAppointments.styles";
-// import Grid from '@mui/material/Unstable_Grid2';
+import { useAuth } from "../../hooks/useAuth";
 
 
 const DoctorAppointments = () => {
@@ -27,6 +27,8 @@ const DoctorAppointments = () => {
   const [selectedDate, setSelectedDate] = useState("");
   const [page, setPage] = useState(1);
   const itemsPerPage = 4;
+  const { user } = useAuth();
+  const [authError, setAuthError] = useState("");
   const [openSuccessModal, setOpenSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -37,77 +39,94 @@ const DoctorAppointments = () => {
 
   useEffect(() => {
     const fetchAppointments = async () => {
-      setLoading(true);
-      setError("");
+      setAuthError("");
+      const token = getToken();
+      if (!token) {
+        setAuthError("You are not authenticated. Please log in again.");
+        return;
+      }
       try {
-        console.log("Fetching appointments...");
-        const response = await axiosInstance.get("/doctor/appointments/");
-        console.log("Appointments response:", response.data);
+        const response = await axiosInstance.get("http://localhost:8000/api/doctor/appointments/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setAppointments(response.data);
       } catch (error) {
-        console.error("Error fetching appointments:", error);
-        console.error("Error response:", error.response);
-        
-        let errorMessage = "Failed to fetch appointments";
-        if (error.response?.data?.error) {
-          errorMessage = error.response.data.error;
-        } else if (error.response?.data?.detail) {
-          errorMessage = error.response.data.detail;
-        } else if (error.message) {
-          errorMessage = error.message;
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Error fetching appointments. Please try again later.");
         }
-        
-        if (error.response?.status === 401) {
-          errorMessage = "Your session has expired. Please login again.";
-        } else if (error.response?.status === 404) {
-          errorMessage = "Doctor profile not found. Please complete your profile setup.";
-        }
-        
-        setError(errorMessage);
-      } finally {
-        setLoading(false);
+        console.error("Axios Error:", error);
       }
     };
-    
     fetchAppointments();
   }, []);
 
-  const handleStatusChange = async (id, status) => {
-    try {
-      console.log(`Updating appointment ${id} status to ${status}...`);
-      await axiosInstance.patch(`/doctor/appointments/${id}/`, { status });
-      
-      setAppointments(prev =>
-        prev.map(appt =>
-          appt.id === id ? { ...appt, status } : appt
-        )
-      );
-      
-      setSuccessMessage(`Appointment ${status} successfully`);
-      setOpenSuccessModal(true);
-    } catch (error) {
-      console.error("Error updating appointment status:", error);
-      setError(error.response?.data?.error || "Failed to update appointment status");
-    }
+  const getToken = () => {
+    return (
+      (user && (user.access || user.token)) ||
+      localStorage.getItem("access") ||
+      localStorage.getItem("token") ||
+      null
+    );
   };
 
-  const handleNoteChange = async (id, note) => {
-    try {
-      console.log(`Updating appointment ${id} notes...`);
-      await axiosInstance.patch(`/doctor/appointments/${id}/`, { notes: note });
-      
-      setAppointments(prev =>
-        prev.map(appt =>
-          appt.id === id ? { ...appt, notes: note } : appt
-        )
-      );
-      
-      setSuccessMessage("Notes updated successfully");
-      setOpenSuccessModal(true);
-    } catch (error) {
-      console.error("Error updating appointment notes:", error);
-      setError(error.response?.data?.error || "Failed to update notes");
+  const handleStatusChange = (id, status) => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
     }
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { status }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => {
+        setAppointments(prev =>
+          prev.map(appt =>
+            appt.id === id ? { ...appt, status } : appt
+          )
+        );
+        setSuccessMessage("Status updated successfully.");
+        setOpenSuccessModal(true);
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Status update failed. Please try again later.");
+        }
+        console.error("Status update failed", error);
+      });
+  };
+
+  const handleNoteChange = (id, note) => {
+    setAuthError("");
+    const token = getToken();
+    if (!token) {
+      setAuthError("You are not authenticated. Please log in again.");
+      return;
+    }
+    axiosInstance.patch(`http://localhost:8000/api/doctor/appointments/${id}/`, { notes: note }, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(() => {
+        setAppointments(prev =>
+          prev.map(appt =>
+            appt.id === id ? { ...appt, notes: note } : appt
+          )
+        );
+        setSuccessMessage("Notes updated successfully.");
+        setOpenSuccessModal(true);
+      })
+      .catch((error) => {
+        if (error.response && error.response.status === 401) {
+          setAuthError("Session expired. Please log in again.");
+        } else {
+          setAuthError("Note update failed. Please try again later.");
+        }
+        console.error("Note update failed", error);
+      });
   };
 
   const startEditing = (appt) => {
@@ -370,6 +389,8 @@ const DoctorAppointments = () => {
       </>
     );
   };
+
+  if (authError) return <Typography color="error" sx={{ mt: 4 }}>{authError}</Typography>;
 
   return (
     <Box sx={styles.mainBox}>

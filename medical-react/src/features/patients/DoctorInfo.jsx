@@ -1,55 +1,102 @@
 import React, { useEffect, useState } from "react";
-import DoctorDetailCard from "../../components/DoctorDetailCard";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Card,
+  Avatar,
+  Stack,
+  Button,
+} from "@mui/material";
 import axios from "axios";
-import { Box, CircularProgress } from "@mui/material";
+import { useParams } from "react-router-dom";
 
 const DoctorInfo = () => {
-  const [doctor, setDoctor] = useState({});
+  const { id } = useParams();
+  const [doctor, setDoctor] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState("23");
-  const [selectedTime, setSelectedTime] = useState("02:00 PM");
-  const { docId } = useParams();
-  const navigate = useNavigate();
-
+  const [error, setError] = useState(null);
   useEffect(() => {
-    if (!docId) return;
-
     axios
-      .get(`http://localhost:5000/doctors/${docId}`)
+      .get(`http://localhost:8000/api/doctor/one-doctor/${id}`)
       .then((res) => {
+        console.log("Doctor info: ", res.data);
         setDoctor(res.data);
         setLoading(false);
       })
       .catch((err) => {
-        console.error("Error fetching doctor details:", err);
+        console.log("Doctor ID:", id);
+        setError("Failed to fetch doctor details.");
         setLoading(false);
       });
-  }, [docId]);
-
-  const handleBook = () => {
-    navigate(`/patient/confirm-appointment/${docId}`);
-  };
+  }, [id]);
 
   if (loading)
     return (
-      <Box display='flex' justifyContent='center' alignItems='center' p={3}>
+      <Box p={3}>
         <CircularProgress />
+      </Box>
+    );
+  if (error)
+    return (
+      <Box p={3}>
+        <Typography color='error'>{error}</Typography>
       </Box>
     );
 
   return (
-    console.log(doctor),
-    (
-      <DoctorDetailCard
-        doctor={doctor}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        selectedTime={selectedTime}
-        onTimeChange={setSelectedTime}
-        onBook={handleBook}
-      />
-    )
+    <Box p={3}>
+      <Card sx={{ p: 3, textAlign: "center" }}>
+        <Avatar
+          src={doctor.image || ""}
+          alt={doctor.full_name}
+          sx={{ width: 120, height: 120, mx: "auto", mb: 2 }}
+        />
+        <Typography variant='h5' fontWeight={600}>
+          {doctor.full_name}
+        </Typography>
+        <Typography variant='subtitle1' color='text.secondary'>
+          {doctor.specialization}
+        </Typography>
+        <Typography variant='subtitle1' color='text.secondary'>
+          {doctor.bio}
+        </Typography>
+        <Typography mt={2}>
+          <strong>Rating:</strong> {doctor.rating || "N/A"}
+        </Typography>
+        <Typography>
+          <strong>Email:</strong> {doctor.user.email}
+        </Typography>
+        <Typography>
+          <strong>Phone:</strong> {doctor.phone}
+        </Typography>
+        <Typography>
+          <strong>Address:</strong> {doctor.address}
+        </Typography>
+
+        {/* Google Map */}
+        <Box mt={3}>
+          <iframe
+            title='Doctor Location'
+            width='100%'
+            height='300'
+            style={{ border: 0 }}
+            loading='lazy'
+            allowFullScreen
+            src={`https://www.google.com/maps?q=${encodeURIComponent(
+              doctor.address || ""
+            )}&output=embed`}
+          ></iframe>
+        </Box>
+
+        {/* Reservation Button */}
+        <Box mt={3}>
+          <Button variant='contained' color='primary'>
+            Make Reservation
+          </Button>
+        </Box>
+      </Card>
+    </Box>
   );
 };
 

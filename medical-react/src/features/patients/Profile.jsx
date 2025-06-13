@@ -37,7 +37,7 @@ const PatientProfile = () => {
     const fetchPatientProfile = async () => {
       try {
         let token = null;
-        // جلب التوكن من user أو من localStorage
+        // Get the token from user or localStorage
         if (authToken) {
           token = authToken;
         } else if (user && user.access) {
@@ -52,7 +52,7 @@ const PatientProfile = () => {
         if (!token) {
           setSnackbar({
             open: true,
-            message: "يرجى تسجيل الدخول أولاً.",
+            message: "Please login first.",
             severity: "error",
           });
           setLoading(false);
@@ -69,8 +69,7 @@ const PatientProfile = () => {
         if (response.status === 401) {
           setSnackbar({
             open: true,
-            message:
-              "انتهت صلاحية الجلسة أو لم يتم تسجيل الدخول. يرجى تسجيل الدخول مجددًا.",
+            message: "Session expired or not logged in. Please login again.",
             severity: "error",
           });
           setLoading(false);
@@ -93,7 +92,7 @@ const PatientProfile = () => {
       } catch (error) {
         setSnackbar({
           open: true,
-          message: "فشل في جلب بيانات الملف الشخصي. تأكد من تسجيل الدخول.",
+          message: "Failed to fetch profile data. Please make sure you are logged in.",
           severity: "error",
         });
         console.error("Failed to fetch patient profile:", error);
@@ -130,32 +129,74 @@ const PatientProfile = () => {
 
   const handleSave = async () => {
     if (!validateForm()) return;
-    const token = getToken();
+
+    // Get the token using the same logic as in useEffect
+    let token = null;
+    if (authToken) {
+      token = authToken;
+    } else if (user && user.access) {
+      token = user.access;
+    } else if (localStorage.getItem("access")) {
+      token = localStorage.getItem("access");
+    } else if (localStorage.getItem("token")) {
+      token = localStorage.getItem("token");
+    }
     if (!token) {
       setSnackbar({
         open: true,
-        message: "يرجى تسجيل الدخول أولاً.",
+        message: "Please login first.",
         severity: "error",
       });
       return;
     }
-    try {
-      const response = await fetch(
-        "http://localhost:8000/api/patients/profile/",
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(formData),
-        }
-      );
 
-      if (!response.ok) throw new Error("Failed to update profile");
+    try {
+      const response = await fetch("http://localhost:8000/api/patients/profile/", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.status === 401) {
+        setSnackbar({
+          open: true,
+          message: "Session expired or not logged in. Please login again.",
+          severity: "error",
+        });
+        return;
+      }
+
+      if (!response.ok) {
+        // Do not clear profile data on error
+        const errorData = await response.json().catch(() => ({}));
+        setSnackbar({
+          open: true,
+          message: errorData.detail || "Failed to update profile",
+          severity: "error",
+        });
+        return;
+      }
 
       const updatedData = await response.json();
-      setPatient(updatedData);
+      // تحديث بيانات user بشكل منفصل إذا كان الاسم أو الإيميل ضمن التعديل
+      if (patient && patient.user) {
+        setPatient({
+          ...patient,
+          ...updatedData,
+          user: {
+            ...patient.user,
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            email: formData.email,
+            ...updatedData.user // لو فيه user جديد من السيرفر
+          }
+        });
+      } else {
+        setPatient(updatedData && updatedData.user ? updatedData : { ...patient, ...updatedData });
+      }
       setEditMode(false);
       setSnackbar({
         open: true,
@@ -178,10 +219,9 @@ const PatientProfile = () => {
   };
 
   if (loading) return <Typography sx={{ mt: 4 }}>Loading...</Typography>;
-  if (!patient)
-    return <Typography sx={{ mt: 4 }}>Profile not found</Typography>;
+  if (!patient || !patient.user) return <Typography sx={{ mt: 4 }}>Profile not found</Typography>;
 
-  const fullName = `${patient.user.first_name} ${patient.user.last_name}`;
+  const fullName = `${patient.user.first_name || ''} ${patient.user.last_name || ''}`.trim();
 
   return (
     <Container sx={{ py: 4 }}>
@@ -235,8 +275,7 @@ const PatientProfile = () => {
                   mb: 2,
                 }}
               >
-                {patient.user.first_name.charAt(0)}
-                {patient.user.last_name.charAt(0)}
+                {(patient.user && patient.user.first_name ? patient.user.first_name.charAt(0) : "")}{(patient.user && patient.user.last_name ? patient.user.last_name.charAt(0) : "")}
               </Avatar>
               {editMode ? (
                 <>
@@ -333,18 +372,10 @@ const PatientProfile = () => {
                 </>
               ) : (
                 <>
-                  <Typography>
-                    <strong>Email:</strong> {patient.user.email}
-                  </Typography>
-                  <Typography>
-                    <strong>Phone:</strong> {patient.phone || "N/A"}
-                  </Typography>
-                  <Typography>
-                    <strong>Address:</strong> {patient.address || "N/A"}
-                  </Typography>
-                  <Typography>
-                    <strong>Age:</strong> {patient.age || "N/A"}
-                  </Typography>
+                  <Typography><strong>Email:</strong> {patient.user ? patient.user.email : "N/A"}</Typography>
+                  <Typography><strong>Phone:</strong> {patient.phone || "N/A"}</Typography>
+                  <Typography><strong>Address:</strong> {patient.address || "N/A"}</Typography>
+                  <Typography><strong>Age:</strong> {patient.age || "N/A"}</Typography>
                   <Typography>
                     <strong>Gender:</strong>{" "}
                     {patient.gender === "M"

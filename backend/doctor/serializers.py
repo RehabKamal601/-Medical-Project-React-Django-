@@ -126,7 +126,7 @@ class DoctorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Doctor
-        fields = ['id', 'user', 'full_name', 'specialization', 'phone', 'bio', 'image', 'address']
+        fields = ['id', 'user', 'full_name', 'specialization', 'phone', 'bio', 'image', 'address', 'rating']
 
     def get_full_name(self, obj):
         first_name = obj.user.first_name.strip() if obj.user.first_name else ''
@@ -195,7 +195,7 @@ class DoctorRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Doctor
-        fields = ['id', 'user', 'password', 'specialization', 'phone', 'bio', 'address']
+        fields = ['id', 'user', 'password', 'specialization', 'phone', 'bio', 'address', 'rating']
 
     def create(self, validated_data):
         user_data = validated_data.pop('user')
