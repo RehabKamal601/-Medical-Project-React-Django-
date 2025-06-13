@@ -47,11 +47,11 @@ function PatientRoutes() {
       <PatientLayout>
         <Routes>
           <Route path='/' element={<FindDoctorsView />} />
-          <Route path='doctors/:docId' element={<DoctorInfo/>} />
+          <Route path='doctors/:id' element={<DoctorInfo/>} />
           {/* <Route path='patients' element={<PatientsList />} /> */}
           <Route path='my-appointments' element={<MyAppointments />} />
           <Route
-            path='confirm-appointment/:docId'
+            path='confirm-appointment/:id'
             element={<AppointmentConfirmation />}
           />
           <Route path='profile' element={<Profile />} />
