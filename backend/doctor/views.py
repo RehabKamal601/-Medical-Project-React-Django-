@@ -4,13 +4,14 @@ from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
 import json
 # this import for make patient reserve appointment.
 from patients.models import Patient
+from rest_framework.decorators import action
 
 from .models import Doctor, DoctorAvailability, Appointment, Patient
 from .serializers import (
@@ -30,6 +31,29 @@ class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
     serializer_class = DoctorSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def approve(self, request, pk=None):
+        doctor = self.get_object()
+        doctor.is_approved = True
+        doctor.is_blocked = False
+        doctor.save()
+        return Response({'status': 'approved'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def block(self, request, pk=None):
+        doctor = self.get_object()
+        doctor.is_blocked = True
+        doctor.is_approved = False
+        doctor.save()
+        return Response({'status': 'blocked'})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def unblock(self, request, pk=None):
+        doctor = self.get_object()
+        doctor.is_blocked = False
+        doctor.save()
+        return Response({'status': 'unblocked'})
 
 class DoctorRegisterView(generics.CreateAPIView):
     queryset = Doctor.objects.all()

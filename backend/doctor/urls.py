@@ -49,6 +49,10 @@ urlpatterns = [
     # this for patient component from abelhameed mohamed
     #6.1 Generic Class Based View get, post
     path('all-appointments/', Appointments_list.as_view()),
+    path('doctors/<int:pk>/approve/', DoctorViewSet.as_view({'post': 'approve'}), name='doctor-approve'),
+    path('doctors/<int:pk>/block/', DoctorViewSet.as_view({'post': 'block'}), name='doctor-block'),
+    path('doctors/<int:pk>/unblock/', DoctorViewSet.as_view({'post': 'unblock'}), name='doctor-unblock'),
+
 
     #6.2 Generic Class Based View get, put, delete
     path('one-appointment/<int:id>', Appointment_id.as_view()),

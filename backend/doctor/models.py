@@ -32,6 +32,9 @@ class Doctor(models.Model):
             MaxValueValidator(5.0)   # Maximum rating of 5
         ]
     )
+    is_approved = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
+
     def __str__(self):
         return f"Dr. {self.user.first_name} {self.user.last_name}"
     

@@ -35,6 +35,8 @@ class Patient(models.Model):
     medical_history = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    is_approved = models.BooleanField(default=False)
+    is_blocked = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.user.get_full_name()} (Patient)"

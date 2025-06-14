@@ -2,6 +2,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.permissions import IsAdminUser
 from django.contrib.auth import get_user_model
 from .models import Patient
 from .serializers import (
@@ -74,3 +75,28 @@ class PatientProfileView(APIView):
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class PatientApprovalView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, pk, action):
+        try:
+            patient = Patient.objects.get(pk=pk)
+        except Patient.DoesNotExist:
+            return Response({'error': 'Patient not found'}, status=404)
+        if action == 'approve':
+            patient.is_approved = True
+            patient.is_blocked = False
+            patient.save()
+            return Response({'status': 'approved'})
+        elif action == 'block':
+            patient.is_blocked = True
+            patient.is_approved = False
+            patient.save()
+            return Response({'status': 'blocked'})
+        elif action == 'unblock':
+            patient.is_blocked = False
+            patient.save()
+            return Response({'status': 'unblocked'})
+        else:
+            return Response({'error': 'Invalid action'}, status=400)

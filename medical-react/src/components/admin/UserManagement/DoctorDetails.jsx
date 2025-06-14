@@ -111,7 +111,7 @@ const DoctorDetails = () => {
       setDoctor(doctorData);
       setSpecialties(specialtiesData);
       setForm({
-        fullName: doctorData.name || doctorData.full_name || "",
+        fullName: doctorData.full_name || "",
         email: doctorData.email || "",
         phone: doctorData.phone || "",
         specialtyId: doctorData.specialty || doctorData.specialty_id || "",
@@ -318,11 +318,16 @@ const DoctorDetails = () => {
         <Card sx={{ mb: 3, boxShadow: 3 }}>
           <CardContent>
             <Grid container spacing={3} alignItems="center">
-              <Grid item xs={12} md={3} sx={{ display: "flex", justifyContent: "center" }}>
+              <Grid
+                item
+                xs={12}
+                md={3}
+                sx={{ display: "flex", justifyContent: "center" }}
+              >
                 <Avatar
                   src={doctor.image || "/default-avatar.png"}
-                  alt={doctor.name || doctor.full_name}
-                  sx={{ width: 150, height: 150 }}
+                  alt={doctor.full_name}
+                  sx={{ width: 120, height: 120 }}
                 />
               </Grid>
               <Grid item xs={12} md={9}>
@@ -335,7 +340,7 @@ const DoctorDetails = () => {
                   }}
                 >
                   <Typography variant="h4" gutterBottom>
-                    {doctor.name || doctor.full_name || "No name provided"}
+                    {doctor.full_name || "No name provided"}
                   </Typography>
                   <Box>
                     <Tooltip title="Edit Doctor">
@@ -355,8 +360,6 @@ const DoctorDetails = () => {
                   </Box>
                 </Box>
 
-                <Divider sx={{ my: 2 }} />
-
                 <Typography
                   variant="h6"
                   sx={{
@@ -373,7 +376,9 @@ const DoctorDetails = () => {
                   <Grid item xs={12} sm={6}>
                     <Typography variant="body1">
                       <strong>Specialty:</strong>{" "}
-                      {getSpecialtyName(doctor.specialty || doctor.specialty_id)}
+                      {getSpecialtyName(
+                        doctor.specialty || doctor.specialty_id
+                      )}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -490,7 +495,7 @@ const DoctorDetails = () => {
       <Dialog open={confirmOpen} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {doctor.name || doctor.full_name}?
+          Are you sure you want to delete {doctor.full_name}?
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelDelete}>Cancel</Button>
