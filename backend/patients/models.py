@@ -4,6 +4,7 @@ from django.conf import settings
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 class Patient(models.Model):
+
     GENDER_CHOICES = [
         ('M', 'Male'),
         ('F', 'Female'),
@@ -22,6 +23,8 @@ class Patient(models.Model):
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(120)]
     )
+    date_of_birth = models.DateField(null=True, blank=True)
+
     gender = models.CharField(
         max_length=1, 
         choices=GENDER_CHOICES, 

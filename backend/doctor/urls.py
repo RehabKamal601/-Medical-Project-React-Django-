@@ -2,15 +2,29 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import DoctorViewSet
 from .views import (
-    DoctorRegisterView, DoctorAvailabilityCreateView,
-    AppointmentListView, AppointmentUpdateView, AppointmentCreateView,
-    DoctorProfileUpdateView, DoctorDashboardStats, DoctorPatientsListView
- , AppointmentUpdateView , AppointmentCreateView , DoctorProfileUpdateView,DoctorAvailabilityListView
+    DoctorRegisterView, 
+    DoctorAvailabilityCreateView,
+    AppointmentListView, 
+    AppointmentCreateView,
+    AppointmentUpdateView,
+    DoctorProfileUpdateView, 
+    DoctorDashboardStats, 
+    DoctorPatientsListView,
+    DoctorAvailabilityListView,
+    AppointmentViewSet,
+    Generics_list, 
+    Generics_id, 
+    Appointments_list, 
+    Appointment_id, 
+    Reservations_list,
+    ReserveAppointmentView
 )
-from .views import (Generics_list, Generics_id, Appointments_list, Appointment_id, Reservations_list, Reservation_id)
+
 
 router = DefaultRouter()
 router.register('doctors', DoctorViewSet)
+appointment_create = AppointmentViewSet.as_view({'post': 'create'})
+
 
 urlpatterns = [
     path('', include(router.urls)),
@@ -38,6 +52,12 @@ urlpatterns = [
 
     #6.2 Generic Class Based View get, put, delete
     path('one-appointment/<int:id>', Appointment_id.as_view()),
+
+    # reserve appointment
+    # path('reserve-appointment/', appointment_create, name='reserve-appointment'),
+    #last try 
+    path('reserve-appointment/', ReserveAppointmentView.as_view(), name='reserve-appointment'),
+
 
     path('all-reservations/', Reservations_list.as_view()),
 

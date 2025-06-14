@@ -6,4 +6,4 @@ class PatientsConfig(AppConfig):
     name = 'patients'
 
     def ready(self):
-        import patients.signals
+        import patients.signals  # ✅ must be here
