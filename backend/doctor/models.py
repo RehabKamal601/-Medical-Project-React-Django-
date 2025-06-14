@@ -4,6 +4,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from patients.models import Patient
 
 class Doctor(models.Model):
     SPECIALIZATION_CHOICES = [
@@ -34,18 +35,6 @@ class Doctor(models.Model):
     def __str__(self):
         return f"Dr. {self.user.first_name} {self.user.last_name}"
     
-
-class Patient(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    date_of_birth = models.DateField(null=True, blank=True)
-    phone = models.CharField(max_length=20, blank=True)
-    address = models.CharField(max_length=255, blank=True)
-    medical_history = models.TextField(blank=True)
-    
-    
-    def __str__(self):
-        return f"{self.user.first_name} {self.user.last_name}"
-
 
 class DoctorAvailability(models.Model):
     DAYS_OF_WEEK = [
@@ -79,6 +68,7 @@ class DoctorAvailability(models.Model):
         return f"{self.doctor} - {self.day} {self.start_time}-{self.end_time}"
 
 class Appointment(models.Model):
+    
     doctor = models.ForeignKey(Doctor, on_delete=models.CASCADE, related_name='appointments')
     patient = models.ForeignKey(Patient, on_delete=models.CASCADE, related_name='appointments')
     date = models.DateTimeField()

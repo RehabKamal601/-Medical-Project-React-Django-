@@ -1,5 +1,6 @@
 # //view
 from rest_framework import viewsets, status, generics, permissions, serializers
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.exceptions import NotAuthenticated, PermissionDenied
@@ -8,6 +9,8 @@ from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
 import json
+# this import for make patient reserve appointment.
+from patients.models import Patient
 
 from .models import Doctor, DoctorAvailability, Appointment, Patient
 from .serializers import (
@@ -267,6 +270,24 @@ class Appointments_list(generics.ListCreateAPIView):
         
         serializer.save(patient=patient)
 
+# for reserve appointment         
+class AppointmentViewSet(ModelViewSet):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    # def perform_create(self, serializer):
+    #     patient = Patient.objects.get(user=self.request.user)
+    #     serializer.save(patient=patient)
+
+    def perform_create(self, serializer):
+        try:
+            patient = self.request.user.patient
+        except AttributeError:
+            raise serializers.ValidationError("This user is not a patient.")
+
+        serializer.save(patient=patient)
+
 
 class Appointment_id(generics.RetrieveUpdateDestroyAPIView):
     queryset = Appointment.objects.all()
@@ -293,3 +314,24 @@ class DoctorAvailabilityListView(generics.ListAPIView):
     def get_queryset(self):
         doctor_id = self.kwargs['id']
         return DoctorAvailability.objects.filter(doctor_id=doctor_id)
+    
+# last try
+class ReserveAppointmentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.role != 'patient':
+            return Response({"error": "Only patients can reserve appointments."}, status=403)
+
+        try:
+            patient = Patient.objects.get(user=user)
+        except Patient.DoesNotExist:
+            return Response({"error": "This user is not a patient."}, status=400)
+
+        serializer = AppointmentSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(patient=patient)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)

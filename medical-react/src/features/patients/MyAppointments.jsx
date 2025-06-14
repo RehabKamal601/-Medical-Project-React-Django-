@@ -196,7 +196,7 @@ const MyAppointments = () => {
           <CardContent>
             <Typography variant='h6'>{appt.doctor_name}</Typography>
             <Typography variant='subtitle2' color='text.secondary'>
-              Specialization: {appt.doctor?.specialization}
+              Specialization: {appt.doctor_specialization}
             </Typography>
             <Typography>Date: {appt.date}</Typography>
             <Typography>Time: {appt.time}</Typography>

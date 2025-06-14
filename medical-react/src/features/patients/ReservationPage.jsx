@@ -90,7 +90,7 @@ const ReservationPage = () => {
       console.log("Payload to send:", payload);
 
       const res = await axios.post(
-        "http://localhost:8000/api/doctor/all-appointments/", //one-appointment/<int:id>
+        "http://localhost:8000/api/doctor/reserve-appointment/",
         payload,
         {
           headers: {

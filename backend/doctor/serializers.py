@@ -223,18 +223,21 @@ class DoctorAvailabilitySerializer(serializers.ModelSerializer):
         fields = ['id', 'doctor', 'day', 'start_time', 'end_time']
 
 class AppointmentSerializer(serializers.ModelSerializer):
-    doctor = DoctorSerializer(read_only=True)
+    # doctor = DoctorSerializer(read_only=True)
+    doctor = serializers.PrimaryKeyRelatedField(queryset=Doctor.objects.all())
 
     patient_name = serializers.SerializerMethodField()
     patient_id = serializers.SerializerMethodField()
     doctor_name = serializers.SerializerMethodField()
+    doctor_specialization = serializers.SerializerMethodField()
+
     time = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
-        fields = ['id', 'doctor', 'doctor_name', 'patient', 'patient_name', 
+        fields = ['id', 'doctor', 'doctor_name', 'doctor_specialization', 'patient', 'patient_name', 
                  'patient_id', 'date', 'time', 'status', 'notes']
-        read_only_fields = ['doctor_name', 'patient_name', 'patient_id', 'time']
+        read_only_fields = ['patient_name', 'patient_id', 'time', 'patient', 'status']  # ✅ هنا
 
     def get_patient_name(self, obj):
         return obj.patient.user.get_full_name() if obj.patient and obj.patient.user else ''
@@ -244,6 +247,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_doctor_name(self, obj):
         return str(obj.doctor) if obj.doctor else ''
+    
+    def get_doctor_specialization(self, obj):
+        return obj.doctor.specialization if obj.doctor else ''
         
     def get_time(self, obj):
         return obj.date.strftime('%H:%M') if obj.date else ''
