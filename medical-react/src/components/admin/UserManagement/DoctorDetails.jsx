@@ -70,7 +70,7 @@ const DoctorDetails = () => {
       const token = getAuthToken();
 
       const [doctorRes, specialtiesRes] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/admin/doctors/${id}/`, {
+        fetch(`http://127.0.0.1:8000/api/doctor/doctors/${id}/`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -132,7 +132,7 @@ const DoctorDetails = () => {
 
     try {
       const token = getAuthToken();
-      const url = `http://127.0.0.1:8000/api/admin/doctors/${id}/`;
+      const url = `http://127.0.0.1:8000/api/doctor/doctors/${id}/`;
 
       const headers = {
         "Content-Type": "application/json",
@@ -240,13 +240,13 @@ const DoctorDetails = () => {
               <Grid item>
                 <Avatar
                   src={doctor.image || "/default-avatar.png"}
-                  alt={doctor.name}
+                  alt={doctor.full_name}
                   sx={{ width: 120, height: 120 }}
                 />
               </Grid>
               <Grid item xs>
                 <Typography variant="h4" gutterBottom>
-                  {doctor.name || "No name provided"}
+                  {doctor.full_name || "No name provided"}
                 </Typography>
                 <Divider sx={{ my: 2 }} />
                 <Typography

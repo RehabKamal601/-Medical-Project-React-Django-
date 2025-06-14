@@ -73,17 +73,12 @@ const AppointmentsList = () => {
         Authorization: `Bearer ${token}`,
       };
 
-      const [appointmentsRes, doctorsRes, patientsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/admin/appointments/", { headers }),
-        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
-        fetch("http://127.0.0.1:8000/api/admin/patients/", { headers }),
-      ]);
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/doctor/appointments/",
+        { headers }
+      );
 
-      if (
-        [appointmentsRes, doctorsRes, patientsRes].some(
-          (res) => res.status === 401
-        )
-      ) {
+      if (response.status === 401) {
         setSnackbar({
           open: true,
           message: "Session expired. Please login again.",
@@ -93,14 +88,21 @@ const AppointmentsList = () => {
         return;
       }
 
-      const appointmentsData = await appointmentsRes.json();
+      if (!response.ok) throw new Error("Failed to fetch appointments");
+
+      const data = await response.json();
+      setAppointments(
+        Array.isArray(data) ? data : data.results || data.data || []
+      );
+
+      const [doctorsRes, patientsRes] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/admin/patients/", { headers }),
+      ]);
+
       const doctorsData = await doctorsRes.json();
       const patientsData = await patientsRes.json();
-      setAppointments(
-        Array.isArray(appointmentsData)
-          ? appointmentsData
-          : appointmentsData.results || appointmentsData.data || []
-      );
+
       setDoctors(
         Array.isArray(doctorsData)
           ? doctorsData
@@ -112,13 +114,17 @@ const AppointmentsList = () => {
           : patientsData.results || patientsData.data || []
       );
     } catch (error) {
-      showSnackbar("Failed to fetch data", "error");
+      setSnackbar({
+        open: true,
+        message: "Failed to fetch data",
+        severity: "error",
+      });
     }
   };
 
   useEffect(() => {
     fetchAppointments();
-  }, [fetchAppointments]);
+  }, []);
 
   const showSnackbar = (message, severity = "success") => {
     setSnackbar({ open: true, message, severity });
@@ -145,8 +151,8 @@ const AppointmentsList = () => {
   const handleOpenEdit = (appointment) => {
     setEditingAppointment(appointment);
     setFormData({
-      doctor: appointment.doctor?.id || "",
-      patient: appointment.patient?.id || "",
+      doctor: appointment.doctor?.id || appointment.doctor || "",
+      patient: appointment.patient?.id || appointment.patient || "",
       date: appointment.date || "",
       time: appointment.time || "",
       notes: appointment.notes || "",
@@ -176,8 +182,8 @@ const AppointmentsList = () => {
     try {
       const token = getAuthToken();
       const url = editingAppointment
-        ? `http://127.0.0.1:8000/api/admin/appointments/${editingAppointment.id}/`
-        : "http://127.0.0.1:8000/api/admin/appointments/";
+        ? `http://127.0.0.1:8000/api/doctor/appointments/${editingAppointment.id}/`
+        : "http://127.0.0.1:8000/api/doctor/appointments/";
       const method = editingAppointment ? "PUT" : "POST";
 
       const headers = {
@@ -233,7 +239,7 @@ const AppointmentsList = () => {
     try {
       const token = getAuthToken();
       const response = await fetch(
-        `http://127.0.0.1:8000/api/admin/appointments/${selectedAppointment.id}/`,
+        `http://127.0.0.1:8000/api/doctor/appointments/${selectedAppointment.id}/`,
         {
           method: "DELETE",
           headers: {
@@ -332,12 +338,12 @@ const AppointmentsList = () => {
               <TableRow key={appointment.id}>
                 <TableCell>#{appointment.id}</TableCell>
                 <TableCell>
-                  {getDoctorName(appointment.doctor?.id || appointment.doctor)}
+                  {appointment.doctor?.name ||
+                    getDoctorName(appointment.doctor)}
                 </TableCell>
                 <TableCell>
-                  {getPatientName(
-                    appointment.patient?.id || appointment.patient
-                  )}
+                  {appointment.patient?.name ||
+                    getPatientName(appointment.patient)}
                 </TableCell>
                 <TableCell>{appointment.date || "N/A"}</TableCell>
                 <TableCell>{appointment.time || "N/A"}</TableCell>

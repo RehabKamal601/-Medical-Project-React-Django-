@@ -14,6 +14,7 @@ ALLOWED_HOSTS = []
 
 # Application definition
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -32,6 +33,7 @@ INSTALLED_APPS = [
     'doctor',
     'admin_api',
     'patients',
+
 ]
 
 MIDDLEWARE = [
@@ -158,3 +160,37 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
+# Jazzmin settings for admin interface customization
+JAZZMIN_SETTINGS = {
+    "site_title": "Medical Portal Admin",
+    "site_header": "Medical Administration",
+    "site_brand": "MediCare",
+    "site_logo": "images/medical_logo.png",
+    "welcome_sign": "Welcome to Medical Portal Admin",
+    "copyright": "MediCare Ltd",
+    
+    # Custom icons for medical models
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "appointments.Appointment": "fas fa-calendar-check",
+        "accounts.Doctor": "fas fa-user-md",
+        "accounts.Patient": "fas fa-user-injured",
+        "accounts.Specialty": "fas fa-stethoscope",
+    },
+
+        # Links to put along the top menu
+    "topmenu_links": [
+        {"app": "doctor"},
+        {"app": "patients"},
+        # external url that opens in a new window (Permissions can be added)
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+    ],
+
+    # UI Customization
+    "theme": "flatly",
+    "show_ui_builder": True,
+    "changeform_format": "horizontal_tabs",
+    "related_modal_active": True,
+}

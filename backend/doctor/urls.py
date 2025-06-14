@@ -31,6 +31,10 @@ urlpatterns = [
     #6.2 Generic Class Based View get, put, delete
     path('one-doctor/<int:id>', Generics_id.as_view()),
 
+    path('doctors/<int:pk>/approve/', DoctorViewSet.as_view({'post': 'approve'}), name='doctor-approve'),
+    path('doctors/<int:pk>/block/', DoctorViewSet.as_view({'post': 'block'}), name='doctor-block'),
+    path('doctors/<int:pk>/unblock/', DoctorViewSet.as_view({'post': 'unblock'}), name='doctor-unblock'),
+
 
 
 ]

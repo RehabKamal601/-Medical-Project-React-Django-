@@ -18,8 +18,11 @@ import {
   Alert,
   IconButton,
   Tooltip,
-  Switch,
-  FormControlLabel,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
+  Avatar,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CustomPagination from "../../CustomPagination.jsx";
@@ -42,11 +45,17 @@ const PatientList = () => {
   const patientsPerPage = 5;
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    name: "",
+    first_name: "",
+    last_name: "",
     email: "",
     phone: "",
-    date_of_birth: "",
     address: "",
+    age: "",
+    gender: "",
+    blood_type: "",
+    allergies: "",
+    medical_history: "",
+    profile_image: null,
   });
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -59,11 +68,11 @@ const PatientList = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!form.name.trim()) newErrors.name = "Name is required";
+    if (!form.first_name.trim())
+      newErrors.first_name = "First name is required";
+    if (!form.last_name.trim()) newErrors.last_name = "Last name is required";
     if (!validateEmail(form.email)) newErrors.email = "Invalid email format";
     if (!validatePhone(form.phone)) newErrors.phone = "Invalid phone number";
-    if (!form.date_of_birth)
-      newErrors.date_of_birth = "Date of birth is required";
     if (!form.address.trim()) newErrors.address = "Address is required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -127,11 +136,18 @@ const PatientList = () => {
   const handleOpenAdd = () => {
     setEditingPatient(null);
     setForm({
-      name: "",
+      first_name: "",
+      last_name: "",
+      username: "",
       email: "",
       phone: "",
-      date_of_birth: "",
       address: "",
+      age: "",
+      gender: "",
+      blood_type: "",
+      allergies: "",
+      medical_history: "",
+      profile_image: null,
     });
     setErrors({});
     setOpenDialog(true);
@@ -140,11 +156,17 @@ const PatientList = () => {
   const handleOpenEdit = (patient) => {
     setEditingPatient(patient);
     setForm({
-      name: patient.name,
+      first_name: patient.user.first_name || "",
+      last_name: patient.user.last_name || "",
       email: patient.email,
-      phone: patient.phone,
-      date_of_birth: patient.date_of_birth,
-      address: patient.address,
+      phone: patient.phone || "",
+      address: patient.address || "",
+      age: patient.age || "",
+      gender: patient.gender || "",
+      blood_type: patient.blood_type || "",
+      allergies: patient.allergies || "",
+      medical_history: patient.medical_history || "",
+      profile_image: patient.profile_image || null,
     });
     setErrors({});
     setOpenDialog(true);
@@ -152,6 +174,17 @@ const PatientList = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm({ ...form, profile_image: reader.result });
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = async () => {
@@ -169,10 +202,24 @@ const PatientList = () => {
         Authorization: `Bearer ${token}`,
       };
 
+      const patientData = {
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone,
+        address: form.address,
+        age: form.age,
+        gender: form.gender,
+        blood_type: form.blood_type,
+        allergies: form.allergies,
+        medical_history: form.medical_history,
+        profile_image: form.profile_image,
+      };
+
       const response = await fetch(url, {
         method,
         headers,
-        body: JSON.stringify(form),
+        body: JSON.stringify(patientData),
       });
 
       if (!response.ok) {
@@ -185,7 +232,36 @@ const PatientList = () => {
           navigate("/admin/login");
           return;
         }
-        throw new Error("Failed to save patient");
+
+        let errorData = {};
+        try {
+          errorData = await response.json();
+        } catch (e) {}
+
+        if (typeof errorData === "object" && errorData !== null) {
+          const fieldErrors = {};
+          let errorMessages = [];
+          for (const key in errorData) {
+            if (Array.isArray(errorData[key])) {
+              fieldErrors[key] = errorData[key][0];
+              errorMessages.push(`${key}: ${errorData[key][0]}`);
+            } else if (typeof errorData[key] === "string") {
+              fieldErrors[key] = errorData[key];
+              errorMessages.push(`${key}: ${errorData[key]}`);
+            }
+          }
+          setErrors(fieldErrors);
+          setSnackbar({
+            open: true,
+            message:
+              errorMessages.length > 0
+                ? errorMessages.join(" | ")
+                : "Failed to save patient",
+            severity: "error",
+          });
+          return;
+        }
+        throw new Error(errorData.message || "Failed to save patient");
       }
 
       fetchPatients();
@@ -200,7 +276,7 @@ const PatientList = () => {
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to save patient",
+        message: error.message || "Failed to save patient",
         severity: "error",
       });
     }
@@ -261,12 +337,6 @@ const PatientList = () => {
     setConfirmOpen(false);
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
-  };
-
   return (
     <Box sx={{ backgroundColor: "#F5F8FF", minHeight: "100vh", p: 4 }}>
       <Paper elevation={3} sx={{ p: 3, borderRadius: "24px" }}>
@@ -286,22 +356,37 @@ const PatientList = () => {
         <Table>
           <TableHead>
             <TableRow sx={{ backgroundColor: "#199A8E" }}>
+              <TableCell sx={{ color: "#fff" }}>Image</TableCell>
               <TableCell sx={{ color: "#fff" }}>Name</TableCell>
               <TableCell sx={{ color: "#fff" }}>Email</TableCell>
               <TableCell sx={{ color: "#fff" }}>Phone</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Date of Birth</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Address</TableCell>
+              <TableCell sx={{ color: "#fff" }}>Age</TableCell>
+              <TableCell sx={{ color: "#fff" }}>Gender</TableCell>
               <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {currentPatients.map((patient) => (
               <TableRow key={patient.id}>
-                <TableCell>{patient.name}</TableCell>
+                <TableCell>
+                  <Avatar
+                    src={patient.profile_image || "/default-avatar.png"}
+                    alt={patient.full_name}
+                    sx={{ width: 56, height: 56 }}
+                  />
+                </TableCell>
+                <TableCell>{patient.full_name}</TableCell>
                 <TableCell>{patient.email}</TableCell>
-                <TableCell>{patient.phone}</TableCell>
-                <TableCell>{formatDate(patient.date_of_birth)}</TableCell>
-                <TableCell>{patient.address}</TableCell>
+                <TableCell>{patient.phone || "Not Set"}</TableCell>
+                <TableCell>{patient.age || "Not Set"}</TableCell>
+                <TableCell>
+                  {patient.gender === "M"
+                    ? "Male"
+                    : patient.gender === "F"
+                    ? "Female"
+                      : "Not Set"
+                  }
+                </TableCell>
                 <TableCell>
                   <Tooltip title="View Details">
                     <IconButton
@@ -337,23 +422,68 @@ const PatientList = () => {
       <Dialog
         open={openDialog}
         onClose={handleCloseDialog}
-        maxWidth="sm"
+        maxWidth="md"
         fullWidth
       >
         <DialogTitle>
           {editingPatient ? "Edit Patient" : "Add Patient"}
         </DialogTitle>
         <DialogContent>
-          <TextField
-            label="Full Name *"
-            name="name"
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            error={!!errors.name}
-            helperText={errors.name || "At least 3 characters"}
-            fullWidth
-            margin="normal"
-          />
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            <Avatar
+              src={form.profile_image || "/default-avatar.png"}
+              sx={{ width: 100, height: 100 }}
+            />
+          </Box>
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            <Button variant="contained" component="label">
+              Upload Image
+              <input
+                type="file"
+                hidden
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+            </Button>
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+            <TextField
+              label="First Name *"
+              name="first_name"
+              value={form.first_name}
+              onChange={(e) => setForm({ ...form, first_name: e.target.value })}
+              error={!!errors.first_name}
+              helperText={errors.first_name}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Last Name *"
+              name="last_name"
+              value={form.last_name}
+              onChange={(e) => setForm({ ...form, last_name: e.target.value })}
+              error={!!errors.last_name}
+              helperText={errors.last_name}
+              fullWidth
+              margin="normal"
+            />
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 2 }}>
+            <TextField
+              label="Username *"
+              name="username"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              error={!!errors.username}
+              helperText={errors.username}
+              fullWidth
+              margin="normal"
+              disabled={!!editingPatient}
+            />
+          </Box>
+
           <TextField
             label="Email *"
             name="email"
@@ -364,6 +494,7 @@ const PatientList = () => {
             fullWidth
             margin="normal"
           />
+
           <TextField
             label="Phone *"
             name="phone"
@@ -379,22 +510,20 @@ const PatientList = () => {
               maxLength: 15,
             }}
           />
-          <TextField
-            label="Date of Birth *"
-            name="date_of_birth"
-            type="date"
-            value={form.date_of_birth}
-            onChange={(e) =>
-              setForm({ ...form, date_of_birth: e.target.value })
-            }
-            error={!!errors.date_of_birth}
-            helperText={errors.date_of_birth}
-            fullWidth
-            margin="normal"
-            InputLabelProps={{
-              shrink: true,
-            }}
-          />
+
+          <Box sx={{ display: "flex", gap: 2, mt: 2 }}>
+            <TextField
+              label="Age"
+              name="age"
+              type="number"
+              value={form.age}
+              onChange={(e) => setForm({ ...form, age: e.target.value })}
+              fullWidth
+              margin="normal"
+              inputProps={{ min: 0, max: 120 }}
+            />
+          </Box>
+
           <TextField
             label="Address *"
             name="address"
@@ -404,6 +533,32 @@ const PatientList = () => {
             helperText={errors.address || "Full address"}
             fullWidth
             margin="normal"
+            multiline
+            rows={2}
+          />
+
+          <TextField
+            label="Allergies"
+            name="allergies"
+            value={form.allergies}
+            onChange={(e) => setForm({ ...form, allergies: e.target.value })}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={2}
+          />
+
+          <TextField
+            label="Medical History"
+            name="medical_history"
+            value={form.medical_history}
+            onChange={(e) =>
+              setForm({ ...form, medical_history: e.target.value })
+            }
+            fullWidth
+            margin="normal"
+            multiline
+            rows={3}
           />
         </DialogContent>
         <DialogActions>
@@ -417,7 +572,8 @@ const PatientList = () => {
       <Dialog open={confirmOpen} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete {patientToDelete?.name}?
+          Are you sure you want to delete{" "}
+          {patientToDelete?.full_name || "this patient"}?
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCancelDelete}>Cancel</Button>

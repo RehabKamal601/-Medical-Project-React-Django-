@@ -12,8 +12,6 @@ import {
   List,
   ListItem,
   ListItemText,
-  Switch,
-  FormControlLabel,
   CircularProgress,
   Alert,
   Snackbar,
@@ -23,14 +21,21 @@ import {
   DialogContent,
   TextField,
   DialogActions,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  InputAdornment,
 } from "@mui/material";
 import { useAuth } from "../../../hooks/useAuth";
 import PersonIcon from "@mui/icons-material/Person";
 import EventIcon from "@mui/icons-material/Event";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import EditIcon from "@mui/icons-material/Edit";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import BlockIcon from "@mui/icons-material/Block";
+import SearchIcon from "@mui/icons-material/Search";
 
 const getAuthToken = () => {
   return localStorage.getItem("access_token");
@@ -40,6 +45,7 @@ const PatientDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [patient, setPatient] = useState(null);
+  const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -56,6 +62,9 @@ const PatientDetails = () => {
     severity: "success",
     message: "",
   });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const validatePhone = (phone) => /^[0-9]{10,15}$/.test(phone);
@@ -72,6 +81,46 @@ const PatientDetails = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const fetchPatients = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = getAuthToken();
+
+      const response = await fetch("http://127.0.0.1:8000/api/patients/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/login");
+          return;
+        }
+        throw new Error("Failed to fetch patients");
+      }
+
+      const data = await response.json();
+      setPatients(data);
+    } catch (error) {
+      setError(error.message);
+      setSnackbar({
+        open: true,
+        message: error.message,
+        severity: "error",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchPatient = async () => {
     try {
       setLoading(true);
@@ -79,7 +128,7 @@ const PatientDetails = () => {
       const token = getAuthToken();
 
       const response = await fetch(
-        `http://localhost:8000/api/admin/patients/${id}/`,
+        `http://127.0.0.1:8000/api/patients/${id}/`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -123,14 +172,17 @@ const PatientDetails = () => {
   };
 
   useEffect(() => {
-    fetchPatient();
+    fetchPatients();
+    if (id) {
+      fetchPatient();
+    }
   }, [id]);
 
   const handleStatusChange = async (field, value) => {
     try {
       const token = getAuthToken();
       const response = await fetch(
-        `http://localhost:8000/api/admin/patients/${id}/`,
+        `http://127.0.0.1:8000/api/patients/${id}/`,
         {
           method: "PATCH",
           headers: {
@@ -176,7 +228,7 @@ const PatientDetails = () => {
     try {
       const token = getAuthToken();
       const response = await fetch(
-        `http://localhost:8000/api/admin/patients/${id}/`,
+        `http://127.0.0.1:8000/api/patients/${id}/`,
         {
           method: "PUT",
           headers: {
@@ -199,6 +251,7 @@ const PatientDetails = () => {
         message: "Patient updated successfully",
         severity: "success",
       });
+      fetchPatients();
     } catch (error) {
       setSnackbar({
         open: true,
@@ -232,6 +285,25 @@ const PatientDetails = () => {
     }
   };
 
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const filteredPatients = patients.filter((patient) => {
+    const patientName = patient?.name || '';
+    const searchTermLower = searchTerm.toLowerCase();
+    return patientName.toLowerCase().includes(searchTermLower);
+  });
+
+  const emptyRows =
+    rowsPerPage -
+    Math.min(rowsPerPage, filteredPatients.length - page * rowsPerPage);
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -240,14 +312,14 @@ const PatientDetails = () => {
     );
   }
 
-  if (error && !patient) {
+  if (error && !patient && !patients.length) {
     return (
       <Box sx={{ p: 4 }}>
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
-        <Button variant="contained" onClick={() => navigate("/admin/patients")}>
-          Back to Patients List
+        <Button variant="contained" onClick={() => navigate("/admin")}>
+          Back to Dashboard
         </Button>
       </Box>
     );
@@ -255,134 +327,217 @@ const PatientDetails = () => {
 
   return (
     <Box sx={{ backgroundColor: "#F5F8FF", minHeight: "100vh", p: 4 }}>
-      <Paper elevation={3} sx={{ p: 3, borderRadius: "24px" }}>
+      <Paper elevation={3} sx={{ p: 3, borderRadius: "24px", mb: 4 }}>
         <Typography
           variant="h5"
           sx={{ mb: 3, color: "#199A8E", fontWeight: "bold" }}
         >
-          Patient Details
+          {id ? "Patient Details" : "Patients List"}
         </Typography>
 
-        {patient ? (
-          <Card sx={{ mb: 3, boxShadow: 3 }}>
-            <CardContent>
-              <Grid container spacing={3} alignItems="center">
-                <Grid
-                  item
-                  xs={12}
-                  md={3}
-                  sx={{ display: "flex", justifyContent: "center" }}
-                >
-                  <Avatar
-                    sx={{
-                      width: 150,
-                      height: 150,
-                      bgcolor: "#199A8E",
-                      fontSize: 60,
-                    }}
+        {id ? (
+          patient ? (
+            <Card sx={{ mb: 3, boxShadow: 3 }}>
+              <CardContent>
+                <Grid container spacing={3} alignItems="center">
+                  <Grid
+                    item
+                    xs={12}
+                    md={3}
+                    sx={{ display: "flex", justifyContent: "center" }}
                   >
-                    {getInitials(patient.name)}
-                  </Avatar>
-                </Grid>
-                <Grid item xs={12} md={9}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
-                    <Typography variant="h4" gutterBottom>
-                      {patient.name || "Unknown Patient"}
-                    </Typography>
-                  </Box>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} md={6}>
-                      <Typography
-                        variant="h6"
-                        sx={{
-                          mb: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1,
-                        }}
-                      >
-                        <PersonIcon /> Personal Information
+                    <Avatar
+                      sx={{
+                        width: 150,
+                        height: 150,
+                        bgcolor: "#199A8E",
+                        fontSize: 60,
+                      }}
+                    >
+                      {getInitials(patient.full_name)}
+                    </Avatar>
+                  </Grid>
+                  <Grid item xs={12} md={9}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="h4" gutterBottom>
+                        {patient.full_name || "Unknown Patient"}
                       </Typography>
-                      <List dense>
-                        <ListItem>
-                          <ListItemText
-                            primary="Email"
-                            secondary={patient.email || "N/A"}
-                          />
-                        </ListItem>
-                        <ListItem>
-                          <ListItemText
-                            primary="Phone"
-                            secondary={patient.phone || "N/A"}
-                          />
-                        </ListItem>
-                        <ListItem>
-                          <ListItemText
-                            primary="Date of Birth"
-                            secondary={
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                <EventIcon fontSize="small" />
-                                {formatDate(patient.date_of_birth)}
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                        <ListItem>
-                          <ListItemText
-                            primary="Address"
-                            secondary={
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  gap: 1,
-                                }}
-                              >
-                                <LocationOnIcon fontSize="small" />
-                                {patient.address || "N/A"}
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      </List>
+                    </Box>
+
+                    <Divider sx={{ my: 2 }} />
+
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} md={6}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            mb: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <PersonIcon /> Personal Information
+                        </Typography>
+                        <List dense>
+                          <ListItem>
+                            <ListItemText
+                              primary="Email"
+                              secondary={patient.email || "N/A"}
+                            />
+                          </ListItem>
+                          <ListItem>
+                            <ListItemText
+                              primary="Phone"
+                              secondary={patient.phone || "N/A"}
+                            />
+                          </ListItem>
+                          <ListItem>
+                            <ListItemText
+                              primary="Date of Birth"
+                              secondary={
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <EventIcon fontSize="small" />
+                                  {formatDate(patient.date_of_birth)}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                          <ListItem>
+                            <ListItemText
+                              primary="Address"
+                              secondary={
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                  }}
+                                >
+                                  <LocationOnIcon fontSize="small" />
+                                  {patient.address || "N/A"}
+                                </Box>
+                              }
+                            />
+                          </ListItem>
+                        </List>
+                      </Grid>
                     </Grid>
                   </Grid>
                 </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              Patient data could not be loaded
+            </Alert>
+          )
         ) : (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            Patient data could not be loaded
-          </Alert>
+          <>
+            <TextField
+              label="Search Patients"
+              variant="outlined"
+              size="small"
+              sx={{ mb: 3, width: "100%", maxWidth: 400 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Name</TableCell>
+                    <TableCell>Email</TableCell>
+                    <TableCell>Phone</TableCell>
+                    <TableCell>Date of Birth</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredPatients
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((patient) => (
+                      <TableRow key={patient.id}>
+                        <TableCell>{patient.name}</TableCell>
+                        <TableCell>{patient.email}</TableCell>
+                        <TableCell>{patient.phone}</TableCell>
+                        <TableCell>
+                          {formatDate(patient.date_of_birth)}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            startIcon={<EditIcon />}
+                            onClick={() =>
+                              navigate(`/admin/patients/${patient.id}`)
+                            }
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  {emptyRows > 0 && (
+                    <TableRow style={{ height: 53 * emptyRows }}>
+                      <TableCell colSpan={5} />
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25]}
+              component="div"
+              count={filteredPatients.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={handleChangePage}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+            />
+          </>
         )}
 
         <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={handleOpenEdit}
-          >
-            Edit
-          </Button>
-          <Button variant="outlined" onClick={() => navigate("/admin")}>
-            Back to Dashboard
-          </Button>
+          {id ? (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<EditIcon />}
+                onClick={handleOpenEdit}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => navigate("/admin/patients")}
+              >
+                Back to Patients List
+              </Button>
+            </>
+          ) : (
+            <Button variant="outlined" onClick={() => navigate("/admin")}>
+              Back to Dashboard
+            </Button>
+          )}
         </Box>
       </Paper>
 
