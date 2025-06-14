@@ -19,6 +19,7 @@ import {
   Chip,
   IconButton,
   MenuItem,
+  CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CustomPagination from "../../CustomPagination.jsx";
@@ -33,6 +34,7 @@ const AppointmentsList = () => {
   const [appointments, setAppointments] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState(null);
   const [formData, setFormData] = useState({
@@ -65,20 +67,26 @@ const AppointmentsList = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const fetchAppointments = async () => {
+  const fetchData = async () => {
     try {
+      setLoading(true);
       const token = getAuthToken();
       const headers = {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       };
 
-      const response = await fetch(
-        "http://127.0.0.1:8000/api/doctor/appointments/",
-        { headers }
-      );
+      const [appointmentsRes, doctorsRes, patientsRes] = await Promise.all([
+        fetch("http://127.0.0.1:8000/api/doctor/appointments/", { headers }),
+        fetch("http://127.0.0.1:8000/api/doctor/doctors/", { headers }),
+        fetch("http://127.0.0.1:8000/api/patients/", { headers }),
+      ]);
 
-      if (response.status === 401) {
+      if (
+        [appointmentsRes, doctorsRes, patientsRes].some(
+          (res) => res.status === 401
+        )
+      ) {
         setSnackbar({
           open: true,
           message: "Session expired. Please login again.",
@@ -88,42 +96,32 @@ const AppointmentsList = () => {
         return;
       }
 
-      if (!response.ok) throw new Error("Failed to fetch appointments");
+      if (!appointmentsRes.ok || !doctorsRes.ok || !patientsRes.ok) {
+        throw new Error("Failed to fetch data");
+      }
 
-      const data = await response.json();
-      setAppointments(
-        Array.isArray(data) ? data : data.results || data.data || []
-      );
-
-      const [doctorsRes, patientsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/admin/doctors/", { headers }),
-        fetch("http://127.0.0.1:8000/api/admin/patients/", { headers }),
+      const [appointmentsData, doctorsData, patientsData] = await Promise.all([
+        appointmentsRes.json(),
+        doctorsRes.json(),
+        patientsRes.json(),
       ]);
 
-      const doctorsData = await doctorsRes.json();
-      const patientsData = await patientsRes.json();
-
-      setDoctors(
-        Array.isArray(doctorsData)
-          ? doctorsData
-          : doctorsData.results || doctorsData.data || []
-      );
-      setPatients(
-        Array.isArray(patientsData)
-          ? patientsData
-          : patientsData.results || patientsData.data || []
-      );
+      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+      setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
+      setPatients(Array.isArray(patientsData) ? patientsData : []);
     } catch (error) {
       setSnackbar({
         open: true,
-        message: "Failed to fetch data",
+        message: error.message || "Failed to fetch data",
         severity: "error",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAppointments();
+    fetchData();
   }, []);
 
   const showSnackbar = (message, severity = "success") => {
@@ -218,7 +216,7 @@ const AppointmentsList = () => {
 
       if (!response.ok) throw new Error("Failed to save appointment");
 
-      fetchAppointments();
+      fetchData();
       setOpenDialog(false);
       showSnackbar(
         editingAppointment
@@ -261,7 +259,7 @@ const AppointmentsList = () => {
 
       if (!response.ok) throw new Error("Failed to delete appointment");
 
-      fetchAppointments();
+      fetchData();
       setOpenConfirmDialog(false);
       showSnackbar("Appointment deleted successfully");
     } catch (error) {
@@ -303,7 +301,6 @@ const AppointmentsList = () => {
     indexOfFirstAppointment,
     indexOfLastAppointment
   );
-  const totalPages = Math.ceil(appointments.length / appointmentsPerPage);
 
   return (
     <Box sx={{ backgroundColor: "#F5F8FF", minHeight: "100vh", p: 4 }}>
@@ -315,63 +312,83 @@ const AppointmentsList = () => {
           Appointments Management
         </Typography>
 
-        <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
-          <Button variant="contained" onClick={handleOpenAdd}>
-            Add New Appointment
-          </Button>
-        </Box>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <>
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 2 }}>
+              <Button variant="contained" onClick={handleOpenAdd}>
+                Add New Appointment
+              </Button>
+            </Box>
 
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#199A8E" }}>
-              <TableCell sx={{ color: "#fff" }}>ID</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Doctor</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Patient</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Date</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Time</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Status</TableCell>
-              <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentAppointments.map((appointment) => (
-              <TableRow key={appointment.id}>
-                <TableCell>#{appointment.id}</TableCell>
-                <TableCell>
-                  {appointment.doctor?.name ||
-                    getDoctorName(appointment.doctor)}
-                </TableCell>
-                <TableCell>
-                  {appointment.patient?.name ||
-                    getPatientName(appointment.patient)}
-                </TableCell>
-                <TableCell>{appointment.date || "N/A"}</TableCell>
-                <TableCell>{appointment.time || "N/A"}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={appointment.status || "pending"}
-                    color={getStatusColor(appointment.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <IconButton onClick={() => handleOpenEdit(appointment)}>
-                    <EditIcon color="primary" />
-                  </IconButton>
-                  <IconButton onClick={() => handleDelete(appointment)}>
-                    <DeleteIcon color="error" />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#199A8E" }}>
+                  <TableCell sx={{ color: "#fff" }}>ID</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Doctor</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Patient</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Date</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Time</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Status</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {currentAppointments.length > 0 ? (
+                  currentAppointments.map((appointment) => (
+                    <TableRow key={appointment.id}>
+                      <TableCell>#{appointment.id}</TableCell>
+                      <TableCell>
+                        {appointment.doctor?.name ||
+                          getDoctorName(appointment.doctor)}
+                      </TableCell>
+                      <TableCell>
+                        {appointment.patient?.name ||
+                          getPatientName(appointment.patient)}
+                      </TableCell>
+                      <TableCell>{appointment.date || "N/A"}</TableCell>
+                      <TableCell>{appointment.time || "N/A"}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={appointment.status || "pending"}
+                          color={getStatusColor(appointment.status)}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => handleOpenEdit(appointment)}>
+                          <EditIcon color="primary" />
+                        </IconButton>
+                        <IconButton onClick={() => handleDelete(appointment)}>
+                          <DeleteIcon color="error" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center">
+                      No appointments found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
 
-        <CustomPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+            {appointments.length > 0 && (
+              <CustomPagination
+                currentPage={currentPage}
+                totalPages={Math.ceil(
+                  appointments.length / appointmentsPerPage
+                )}
+                onPageChange={setCurrentPage}
+              />
+            )}
+          </>
+        )}
       </Paper>
 
       <Dialog
