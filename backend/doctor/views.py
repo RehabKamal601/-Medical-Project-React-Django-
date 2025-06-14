@@ -360,3 +360,25 @@ class ReserveAppointmentView(APIView):
             serializer.save(patient=patient)
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+        return Response(serializer.errors, status=400)
+
+class update_appointment_status(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def patch(self, request, pk):
+        try:
+            appointment = Appointment.objects.get(pk=pk)
+        except Appointment.DoesNotExist:
+            return Response({"error": "Appointment not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # تحقق من أن المستخدم هو الدكتور المرتبط بالموعد
+        if request.user.doctor != appointment.doctor:
+            return Response({"error": "You are not authorized to update this appointment"}, status=status.HTTP_403_FORBIDDEN)
+        
+        # تحديث حالة الموعد
+        appointment.status = request.data.get('status', appointment.status)
+        appointment.save()
+        
+        # إعادة بيانات الموعد المحدثة
+        serializer = AppointmentSerializer(appointment)
+        return Response(serializer.data)
