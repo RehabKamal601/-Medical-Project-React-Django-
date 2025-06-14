@@ -28,7 +28,7 @@ const ReservationPage = () => {
 
   useEffect(() => {
     const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setDate(tomorrow.getDate() + 0);
     setMinDate(tomorrow.toISOString().split("T")[0]);
   }, []);
 
