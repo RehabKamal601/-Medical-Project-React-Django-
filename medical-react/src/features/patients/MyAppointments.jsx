@@ -125,6 +125,15 @@ const MyAppointments = () => {
       setAuthError("You are not authenticated. Please log in again.");
       return;
     }
+
+    const now = new Date();
+    const selectedDateTime = new Date(`${selected.date}T${selected.time}`);
+
+    if (selectedDateTime < now) {
+      setAuthError("Cannot set an appointment in the past.");
+      return;
+    }
+
     try {
       await axios.put(
         `http://localhost:8000/api/doctor/one-appointment/${selected.id}`,
@@ -145,6 +154,9 @@ const MyAppointments = () => {
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
+
+  const today = new Date().toISOString().split("T")[0];
+  const currentTime = new Date().toTimeString().slice(0, 5);
 
   if (loading) return <CircularProgress sx={{ mt: 4 }} />;
   if (authError)
@@ -237,7 +249,7 @@ const MyAppointments = () => {
         sx={{ mt: 2, display: "flex", justifyContent: "center" }}
       />
 
-      {/* Dialogs below unchanged except layout fixes */}
+      {/* View Dialog */}
       <Dialog open={viewOpen} onClose={() => setViewOpen(false)}>
         <DialogTitle>Appointment Details</DialogTitle>
         <DialogContent>
@@ -247,7 +259,8 @@ const MyAppointments = () => {
                 <strong>Doctor:</strong> {selected.doctor_name}
               </Typography>
               <Typography>
-                <strong>Specialization:</strong> {selected.specialization}
+                <strong>Specialization:</strong>{" "}
+                {selected.doctor_specialization}
               </Typography>
               <Typography>
                 <strong>Date:</strong> {selected.date}
@@ -269,6 +282,7 @@ const MyAppointments = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Edit Dialog */}
       <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
         <DialogTitle>Edit Appointment</DialogTitle>
         <DialogContent>
@@ -280,6 +294,9 @@ const MyAppointments = () => {
             value={selected?.date || ""}
             onChange={(e) => setSelected({ ...selected, date: e.target.value })}
             InputLabelProps={{ shrink: true }}
+            inputProps={{
+              min: today,
+            }}
           />
           <TextField
             margin='dense'
@@ -289,6 +306,9 @@ const MyAppointments = () => {
             value={selected?.time || ""}
             onChange={(e) => setSelected({ ...selected, time: e.target.value })}
             InputLabelProps={{ shrink: true }}
+            inputProps={{
+              min: selected?.date === today ? currentTime : undefined,
+            }}
           />
         </DialogContent>
         <DialogActions>
@@ -299,6 +319,7 @@ const MyAppointments = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Delete Confirmation Dialog */}
       <Dialog open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
