@@ -17,7 +17,8 @@ from .views import (
     Appointments_list, 
     Appointment_id, 
     Reservations_list,
-    ReserveAppointmentView
+    ReserveAppointmentView,
+    update_appointment_status
 )
 
 
@@ -69,6 +70,8 @@ urlpatterns = [
     # path('doctors/<int:id>/availability', DoctorAvailabilityListView.as_view(), name='availability'),
 
     path('<int:id>/availability/', DoctorAvailabilityListView.as_view(), name='doctor-availability-by-id'),
+
+    path('appointments/<int:pk>/', update_appointment_status.as_view(), name='update-appointment-status'),
 
 ]
 
