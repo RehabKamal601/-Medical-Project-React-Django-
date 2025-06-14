@@ -395,7 +395,7 @@ const PatientDetails = () => {
                           <ListItem>
                             <ListItemText
                               primary="Phone"
-                              secondary={patient.phone || "N/A"}
+                              secondary={patient.phone || "Not Set"}
                             />
                           </ListItem>
                           <ListItem>
@@ -410,7 +410,9 @@ const PatientDetails = () => {
                                   }}
                                 >
                                   <EventIcon fontSize="small" />
-                                  {formatDate(patient.date_of_birth)}
+                                  {formatDate(
+                                    patient.date_of_birth
+                                  )}
                                 </Box>
                               }
                             />
@@ -427,7 +429,7 @@ const PatientDetails = () => {
                                   }}
                                 >
                                   <LocationOnIcon fontSize="small" />
-                                  {patient.address || "N/A"}
+                                  {patient.address || "Not Set"}
                                 </Box>
                               }
                             />
