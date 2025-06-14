@@ -194,6 +194,7 @@ class DoctorDashboardStats(APIView):
         return Response({
             "doctor": {
                 "name": f"Dr. {request.user.first_name} {request.user.last_name}".strip() or f"Dr. {request.user.username}",
+                
                 "title": doctor.specialization or "Doctor"
             },
             "stats": [

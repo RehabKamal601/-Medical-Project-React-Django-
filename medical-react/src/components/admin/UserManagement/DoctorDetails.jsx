@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Avatar,
-  Grid,
   Button,
   Paper,
   Alert,
@@ -19,10 +18,17 @@ import {
   MenuItem,
   Snackbar,
   Divider,
+  Grid,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
-import EditIcon from "@mui/icons-material/Edit";
-import { useAuth } from "../../../hooks/useAuth";
-import PersonIcon from "@mui/icons-material/Person";
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  ArrowBack as ArrowBackIcon,
+  Person as PersonIcon,
+} from "@mui/icons-material";
+
 const getAuthToken = () => {
   return localStorage.getItem("access_token");
 };
@@ -35,6 +41,7 @@ const DoctorDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -70,7 +77,7 @@ const DoctorDetails = () => {
       const token = getAuthToken();
 
       const [doctorRes, specialtiesRes] = await Promise.all([
-        fetch(`http://127.0.0.1:8000/api/admin/doctors/${id}/`, {
+        fetch(`http://127.0.0.1:8000/api/doctor/doctors/${id}/`, {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
@@ -94,17 +101,21 @@ const DoctorDetails = () => {
         return;
       }
 
+      if (!doctorRes.ok) {
+        throw new Error("Failed to fetch doctor details");
+      }
+
       const doctorData = await doctorRes.json();
       const specialtiesData = await specialtiesRes.json();
 
       setDoctor(doctorData);
       setSpecialties(specialtiesData);
       setForm({
-        fullName: doctorData.name,
-        email: doctorData.email,
-        phone: doctorData.phone,
-        specialtyId: doctorData.specialty,
-        bio: doctorData.bio,
+        fullName: doctorData.name || doctorData.full_name || "",
+        email: doctorData.email || "",
+        phone: doctorData.phone || "",
+        specialtyId: doctorData.specialty || doctorData.specialty_id || "",
+        bio: doctorData.bio || "",
       });
     } catch (err) {
       setError(err.message || "An error occurred");
@@ -132,7 +143,7 @@ const DoctorDetails = () => {
 
     try {
       const token = getAuthToken();
-      const url = `http://127.0.0.1:8000/api/admin/doctors/${id}/`;
+      const url = `http://127.0.0.1:8000/api/doctor/doctors/${id}/`;
 
       const headers = {
         "Content-Type": "application/json",
@@ -160,7 +171,7 @@ const DoctorDetails = () => {
             message: "Session expired. Please login again.",
             severity: "error",
           });
-          navigate("/admin/login");
+          navigate("/login");
           return;
         }
         throw new Error("Failed to update doctor");
@@ -180,6 +191,59 @@ const DoctorDetails = () => {
         severity: "error",
       });
     }
+  };
+
+  const handleDelete = () => {
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      const token = getAuthToken();
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
+      const response = await fetch(
+        `http://127.0.0.1:8000/api/doctor/doctors/${id}/`,
+        {
+          method: "DELETE",
+          headers,
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          setSnackbar({
+            open: true,
+            message: "Session expired. Please login again.",
+            severity: "error",
+          });
+          navigate("/login");
+          return;
+        }
+        throw new Error("Delete failed");
+      }
+
+      setSnackbar({
+        open: true,
+        message: "Doctor deleted successfully",
+        severity: "success",
+      });
+      navigate("/admin/doctors");
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: "Failed to delete doctor",
+        severity: "error",
+      });
+      setConfirmOpen(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setConfirmOpen(false);
   };
 
   const getSpecialtyName = (specialtyId) => {
@@ -227,28 +291,72 @@ const DoctorDetails = () => {
   return (
     <Box sx={{ backgroundColor: "#F5F8FF", minHeight: "100vh", p: 4 }}>
       <Paper elevation={3} sx={{ p: 3, borderRadius: "24px" }}>
-        <Typography
-          variant="h5"
-          sx={{ mb: 3, color: "#199A8E", fontWeight: "bold" }}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
         >
-          Doctor Details
-        </Typography>
+          <Typography
+            variant="h5"
+            sx={{ color: "#199A8E", fontWeight: "bold" }}
+          >
+            Doctor Details
+          </Typography>
+          <Tooltip title="Back to Doctors List">
+            <IconButton
+              onClick={() => navigate("/admin/doctors")}
+              color="primary"
+            >
+              <ArrowBackIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
         <Card sx={{ mb: 3, boxShadow: 3 }}>
           <CardContent>
             <Grid container spacing={3} alignItems="center">
-              <Grid item>
+              <Grid item xs={12} md={3} sx={{ display: "flex", justifyContent: "center" }}>
                 <Avatar
                   src={doctor.image || "/default-avatar.png"}
-                  alt={doctor.name}
-                  sx={{ width: 120, height: 120 }}
+                  alt={doctor.name || doctor.full_name}
+                  sx={{ width: 150, height: 150 }}
                 />
               </Grid>
-              <Grid item xs>
-                <Typography variant="h4" gutterBottom>
-                  {doctor.name || "No name provided"}
-                </Typography>
+              <Grid item xs={12} md={9}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h4" gutterBottom>
+                    {doctor.name || doctor.full_name || "No name provided"}
+                  </Typography>
+                  <Box>
+                    <Tooltip title="Edit Doctor">
+                      <IconButton
+                        onClick={handleOpenEdit}
+                        color="primary"
+                        sx={{ mr: 1 }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Delete Doctor">
+                      <IconButton onClick={handleDelete} color="error">
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </Box>
+
                 <Divider sx={{ my: 2 }} />
+
                 <Typography
                   variant="h6"
                   sx={{
@@ -260,45 +368,40 @@ const DoctorDetails = () => {
                 >
                   <PersonIcon /> Personal Information
                 </Typography>
-                <Box sx={{ mb: 1 }}>
-                  <Typography variant="body1">
-                    <strong>Specialty:</strong>{" "}
-                    {getSpecialtyName(doctor.specialty)}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>Email:</strong> {doctor.email || "N/A"}
-                  </Typography>
-                  <Typography variant="body1">
-                    <strong>Phone:</strong> {doctor.phone || "N/A"}
-                  </Typography>
-                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1">
+                      <strong>Specialty:</strong>{" "}
+                      {getSpecialtyName(doctor.specialty || doctor.specialty_id)}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1">
+                      <strong>Email:</strong> {doctor.email || "N/A"}
+                    </Typography>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="body1">
+                      <strong>Phone:</strong> {doctor.phone || "N/A"}
+                    </Typography>
+                  </Grid>
+                </Grid>
+
                 {doctor.bio && (
-                  <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                      <strong>Bio:</strong>
+                  <Box sx={{ mt: 3 }}>
+                    <Typography variant="h6" gutterBottom>
+                      Biography
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {doctor.bio}
-                    </Typography>
+                    <Paper elevation={0} sx={{ p: 2, bgcolor: "#f5f5f5" }}>
+                      <Typography variant="body1">{doctor.bio}</Typography>
+                    </Paper>
                   </Box>
                 )}
               </Grid>
             </Grid>
           </CardContent>
         </Card>
-
-        <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}>
-          <Button
-            variant="contained"
-            startIcon={<EditIcon />}
-            onClick={handleOpenEdit}
-          >
-            Edit Doctor
-          </Button>
-          <Button variant="outlined" onClick={() => navigate("/admin/doctors")}>
-            Back to Doctors List
-          </Button>
-        </Box>
       </Paper>
 
       <Dialog
@@ -318,6 +421,7 @@ const DoctorDetails = () => {
             helperText={errors.fullName || "At least 3 characters"}
             fullWidth
             margin="normal"
+            sx={{ mt: 2 }}
           />
           <TextField
             label="Email *"
@@ -371,7 +475,7 @@ const DoctorDetails = () => {
             helperText={errors.bio || "At least 10 characters"}
             fullWidth
             multiline
-            rows={3}
+            rows={4}
             margin="normal"
           />
         </DialogContent>
@@ -379,6 +483,23 @@ const DoctorDetails = () => {
           <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button variant="contained" onClick={handleSave}>
             Update
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmOpen} onClose={handleCancelDelete}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          Are you sure you want to delete {doctor.name || doctor.full_name}?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCancelDelete}>Cancel</Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleConfirmDelete}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
