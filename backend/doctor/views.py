@@ -1,4 +1,3 @@
-# //view
 from rest_framework import viewsets, status, generics, permissions, serializers
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
@@ -9,11 +8,10 @@ from django.db.models import Count
 from datetime import date
 from django.contrib.auth import get_user_model
 import json
-# this import for make patient reserve appointment.
 from patients.models import Patient
 from rest_framework.decorators import action
 
-from .models import Doctor, DoctorAvailability, Appointment, Patient
+from .models import Doctor, DoctorAvailability, Appointment
 from .serializers import (
     DoctorSerializer,
     DoctorRegisterSerializer,
@@ -26,6 +24,10 @@ User = get_user_model()
 class IsDoctor(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated and request.user.role == 'doctor'
+
+class IsDoctorOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and (request.user.role == 'doctor' or request.user.is_staff)
 
 class DoctorViewSet(viewsets.ModelViewSet):
     queryset = Doctor.objects.all()
@@ -54,6 +56,40 @@ class DoctorViewSet(viewsets.ModelViewSet):
         doctor.is_blocked = False
         doctor.save()
         return Response({'status': 'unblocked'})
+
+class AppointmentListView(generics.ListAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsDoctorOrAdmin]
+
+    def get_queryset(self):
+        if self.request.user.role == 'doctor':
+            return Appointment.objects.filter(doctor=self.request.user.doctor)
+        elif self.request.user.is_staff:
+            return Appointment.objects.all()
+        return Appointment.objects.none()
+
+class AppointmentUpdateView(generics.UpdateAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsDoctorOrAdmin] 
+
+    def get_queryset(self):
+        if self.request.user.role == 'doctor':
+            return Appointment.objects.filter(doctor=self.request.user.doctor)
+        elif self.request.user.is_staff:
+            return Appointment.objects.all()
+        return Appointment.objects.none()
+
+class AppointmentCreateView(generics.CreateAPIView):
+    serializer_class = AppointmentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        if self.request.user.role == 'doctor':
+            serializer.save(doctor=self.request.user.doctor)
+        elif hasattr(self.request.user, 'patient'):
+            serializer.save(patient=self.request.user.patient)
+        else:
+            serializer.save()
 
 class DoctorRegisterView(generics.CreateAPIView):
     queryset = Doctor.objects.all()
@@ -104,30 +140,6 @@ class DoctorAvailabilityCreateView(APIView):
         doctor = self.get_doctor(request)
         DoctorAvailability.objects.filter(doctor=doctor).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-class AppointmentListView(generics.ListAPIView):
-    serializer_class = AppointmentSerializer
-    permission_classes = [IsDoctor]
-
-    def get_queryset(self):
-        return Appointment.objects.filter(doctor=self.request.user.doctor)
-
-class AppointmentUpdateView(generics.UpdateAPIView):
-    serializer_class = AppointmentSerializer
-    permission_classes = [IsDoctor]
-
-    def get_queryset(self):
-        return Appointment.objects.filter(doctor=self.request.user.doctor)
-
-class AppointmentCreateView(generics.CreateAPIView):
-    serializer_class = AppointmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def perform_create(self, serializer):
-        if self.request.user.role == 'doctor':
-            serializer.save(doctor=self.request.user.doctor)
-        else:
-            serializer.save()
 
 class DoctorProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = DoctorSerializer
@@ -359,7 +371,6 @@ class ReserveAppointmentView(APIView):
         if serializer.is_valid():
             serializer.save(patient=patient)
             return Response(serializer.data, status=201)
-        return Response(serializer.errors, status=400)
         return Response(serializer.errors, status=400)
 
 class update_appointment_status(APIView):

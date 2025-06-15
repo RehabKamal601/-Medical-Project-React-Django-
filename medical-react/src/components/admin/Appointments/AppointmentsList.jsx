@@ -77,7 +77,7 @@ const AppointmentsList = () => {
       };
 
       const [appointmentsRes, doctorsRes, patientsRes] = await Promise.all([
-        fetch("http://127.0.0.1:8000/api/doctor/appointments/", { headers }),
+        fetch("http://localhost:8000/api/doctor/availability/", { headers }),
         fetch("http://127.0.0.1:8000/api/doctor/doctors/", { headers }),
         fetch("http://127.0.0.1:8000/api/patients/", { headers }),
       ]);
@@ -106,7 +106,19 @@ const AppointmentsList = () => {
         patientsRes.json(),
       ]);
 
-      setAppointments(Array.isArray(appointmentsData) ? appointmentsData : []);
+      const processedAppointments = Array.isArray(appointmentsData)
+        ? appointmentsData.map((appt) => ({
+            ...appt,
+            doctorName: appt.doctor_name || getDoctorName(appt.doctor),
+            patientName: appt.patient_name || getPatientName(appt.patient),
+            time:
+              appt.time ||
+              (appt.date ? new Date(appt.date).toLocaleTimeString() : "N/A"),
+            date: appt.date ? new Date(appt.date).toLocaleDateString() : "N/A",
+          }))
+        : [];
+
+      setAppointments(processedAppointments);
       setDoctors(Array.isArray(doctorsData) ? doctorsData : []);
       setPatients(Array.isArray(patientsData) ? patientsData : []);
     } catch (error) {
@@ -151,7 +163,9 @@ const AppointmentsList = () => {
     setFormData({
       doctor: appointment.doctor?.id || appointment.doctor || "",
       patient: appointment.patient?.id || appointment.patient || "",
-      date: appointment.date || "",
+      date: appointment.date
+        ? new Date(appointment.date).toISOString().split("T")[0]
+        : "",
       time: appointment.time || "",
       notes: appointment.notes || "",
       status: appointment.status || "pending",
@@ -180,8 +194,8 @@ const AppointmentsList = () => {
     try {
       const token = getAuthToken();
       const url = editingAppointment
-        ? `http://127.0.0.1:8000/api/doctor/appointments/${editingAppointment.id}/`
-        : "http://127.0.0.1:8000/api/doctor/appointments/";
+        ? `http://localhost:8000/api/doctor/availability/${editingAppointment.id}/`
+        : "http://localhost:8000/api/doctor/availability/";
       const method = editingAppointment ? "PUT" : "POST";
 
       const headers = {
@@ -189,11 +203,15 @@ const AppointmentsList = () => {
         Authorization: `Bearer ${token}`,
       };
 
+      const dateTime =
+        formData.date && formData.time
+          ? `${formData.date}T${formData.time}:00`
+          : null;
+
       const requestData = {
         doctor: formData.doctor,
         patient: formData.patient,
-        date: formData.date,
-        time: formData.time,
+        date: dateTime,
         notes: formData.notes,
         status: formData.status,
       };
@@ -214,7 +232,10 @@ const AppointmentsList = () => {
         return;
       }
 
-      if (!response.ok) throw new Error("Failed to save appointment");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to save appointment");
+      }
 
       fetchData();
       setOpenDialog(false);
@@ -237,7 +258,7 @@ const AppointmentsList = () => {
     try {
       const token = getAuthToken();
       const response = await fetch(
-        `http://127.0.0.1:8000/api/doctor/appointments/${selectedAppointment.id}/`,
+        `http://localhost:8000/api/doctor/availability/${selectedAppointment.id}/`,
         {
           method: "DELETE",
           headers: {
@@ -287,12 +308,16 @@ const AppointmentsList = () => {
 
   const getDoctorName = (doctorId) => {
     const doctor = doctors.find((d) => d.id === doctorId);
-    return doctor ? doctor.name : "N/A";
+    return doctor
+      ? `${doctor.user?.first_name} ${doctor.user?.last_name}`
+      : "N/A";
   };
 
   const getPatientName = (patientId) => {
     const patient = patients.find((p) => p.id === patientId);
-    return patient ? patient.name : "N/A";
+    return patient
+      ? `${patient.user?.first_name} ${patient.user?.last_name}`
+      : "N/A";
   };
 
   const indexOfLastAppointment = currentPage * appointmentsPerPage;
@@ -329,40 +354,41 @@ const AppointmentsList = () => {
                 <TableRow sx={{ backgroundColor: "#199A8E" }}>
                   <TableCell sx={{ color: "#fff" }}>ID</TableCell>
                   <TableCell sx={{ color: "#fff" }}>Doctor</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Patient</TableCell>
                   <TableCell sx={{ color: "#fff" }}>Date</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Time</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Start Time</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>End Time</TableCell>
                   <TableCell sx={{ color: "#fff" }}>Status</TableCell>
                   <TableCell sx={{ color: "#fff" }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {currentAppointments.length > 0 ? (
-                  currentAppointments.map((appointment) => (
-                    <TableRow key={appointment.id}>
-                      <TableCell>#{appointment.id}</TableCell>
+                  currentAppointments.map((availability) => (
+                    <TableRow key={availability.id}>
+                      <TableCell>#{availability.id}</TableCell>
                       <TableCell>
-                        {appointment.doctor?.name ||
-                          getDoctorName(appointment.doctor)}
+                        {availability.doctorName ||
+                          getDoctorName(availability.doctor)}
                       </TableCell>
+                      <TableCell>{availability.date || "N/A"}</TableCell>
                       <TableCell>
-                        {appointment.patient?.name ||
-                          getPatientName(appointment.patient)}
+                        {availability.start_time || availability.time || "N/A"}
                       </TableCell>
-                      <TableCell>{appointment.date || "N/A"}</TableCell>
-                      <TableCell>{appointment.time || "N/A"}</TableCell>
+                      <TableCell>{availability.end_time || "N/A"}</TableCell>
                       <TableCell>
                         <Chip
-                          label={appointment.status || "pending"}
-                          color={getStatusColor(appointment.status)}
+                          label={availability.status || "active"}
+                          color={getStatusColor(availability.status)}
                           size="small"
                         />
                       </TableCell>
                       <TableCell>
-                        <IconButton onClick={() => handleOpenEdit(appointment)}>
+                        <IconButton
+                          onClick={() => handleOpenEdit(availability)}
+                        >
                           <EditIcon color="primary" />
                         </IconButton>
-                        <IconButton onClick={() => handleDelete(appointment)}>
+                        <IconButton onClick={() => handleDelete(availability)}>
                           <DeleteIcon color="error" />
                         </IconButton>
                       </TableCell>
@@ -371,7 +397,7 @@ const AppointmentsList = () => {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} align="center">
-                      No appointments found
+                      No availabilities found
                     </TableCell>
                   </TableRow>
                 )}
@@ -415,7 +441,7 @@ const AppointmentsList = () => {
             <MenuItem value="">Select Doctor</MenuItem>
             {doctors.map((doctor) => (
               <MenuItem key={doctor.id} value={doctor.id}>
-                {doctor.name}
+                {`${doctor.user?.first_name} ${doctor.user?.last_name}`}
               </MenuItem>
             ))}
           </TextField>
@@ -433,7 +459,7 @@ const AppointmentsList = () => {
             <MenuItem value="">Select Patient</MenuItem>
             {patients.map((patient) => (
               <MenuItem key={patient.id} value={patient.id}>
-                {patient.name}
+                {`${patient.user?.first_name} ${patient.user?.last_name}`}
               </MenuItem>
             ))}
           </TextField>
@@ -515,7 +541,7 @@ const AppointmentsList = () => {
       <Dialog open={openConfirmDialog} onClose={handleCancelDelete}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete appointment #{selectedAppointment?.id}
+          Are you sure you want to delete appointment #{selectedAppointment?.id}{" "}
           ?
         </DialogContent>
         <DialogActions>
