@@ -18,6 +18,10 @@ A full-stack medical appointment booking system that connects **patients**, **do
 ### 🧑‍💼 Admin Role
 - Add, update, or delete doctors and patients.
 - Assign appointments manually if needed.
+
+https://github.com/user-attachments/assets/0cca24f5-934e-49c9-8602-f38fba93ce20
+
+
 - View and manage all system users.
 - Monitor system activity.
 
